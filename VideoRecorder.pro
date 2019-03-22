@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2016-09-01T16:10:47
+# Project created by QtCreator 2015-01-06T22:20:29
 #
 #-------------------------------------------------
 
@@ -8,31 +8,27 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = VideoRecorder
+TARGET = VideoRecorder_7
 TEMPLATE = app
 
+SOURCES += src/main.cpp
 
-SOURCES += src/main.cpp \
-    src/mainwindow.cpp \
-    src/audio/AACEncoder.cpp \
-    src/audio/getaudiothread.cpp
+HEADERS  +=
 
-HEADERS  += \
-    src/mainwindow.h \
-    src/audio/AACEncoder.h \
-    src/audio/getaudiothread.h
+FORMS    +=
 
-FORMS    += \
-    src/mainwindow.ui
-
-INCLUDEPATH += $$PWD/ffmpeg/include \
+INCLUDEPATH += $$PWD/lib/ffmpeg/include \
+               $$PWD/lib/SDL2/include \
                $$PWD/src
 
-LIBS += $$PWD/ffmpeg/lib/avcodec.lib \
-        $$PWD/ffmpeg/lib/avdevice.lib \
-        $$PWD/ffmpeg/lib/avfilter.lib \
-        $$PWD/ffmpeg/lib/avformat.lib \
-        $$PWD/ffmpeg/lib/avutil.lib \
-        $$PWD/ffmpeg/lib/postproc.lib \
-        $$PWD/ffmpeg/lib/swresample.lib \
-        $$PWD/ffmpeg/lib/swscale.lib
+LIBS += $$PWD/lib/ffmpeg/lib/avcodec.lib \
+        $$PWD/lib/ffmpeg/lib/avdevice.lib \
+        $$PWD/lib/ffmpeg/lib/avfilter.lib \
+        $$PWD/lib/ffmpeg/lib/avformat.lib \
+        $$PWD/lib/ffmpeg/lib/avutil.lib \
+        $$PWD/lib/ffmpeg/lib/postproc.lib \
+        $$PWD/lib/ffmpeg/lib/swresample.lib \
+        $$PWD/lib/ffmpeg/lib/swscale.lib \
+        $$PWD/lib/SDL2/lib/x86/SDL2.lib
+
+

@@ -1,4 +1,4 @@
-从零开始学习音视频编程技术（十八） 录屏软件开发之编码AAC
+从零开始学习音视频编程技术（十九） 录屏软件开发之YUV AAC合成MP4
 
 
 这是Qt的工程，建议使用Qt Creator 打开
@@ -12,7 +12,7 @@ FFMPEG的版本是2.5.2
 
 
 关于代码的解释 请参考：
-http://blog.yundiantech.com/?log=blog&id=24
+http://blog.yundiantech.com/?log=blog&id=26
 
 
 Qt开发环境的搭建 请参考：
