@@ -12,14 +12,21 @@ TARGET = VideoRecorder
 TEMPLATE = app
 
 
-SOURCES += main.cpp
+SOURCES += src/main.cpp \
+    src/mainwindow.cpp \
+    src/audio/AACEncoder.cpp \
+    src/audio/getaudiothread.cpp
 
-HEADERS  +=
+HEADERS  += \
+    src/mainwindow.h \
+    src/audio/AACEncoder.h \
+    src/audio/getaudiothread.h
 
-FORMS    +=
+FORMS    += \
+    src/mainwindow.ui
 
 INCLUDEPATH += $$PWD/ffmpeg/include \
-                $$PWD/src
+               $$PWD/src
 
 LIBS += $$PWD/ffmpeg/lib/avcodec.lib \
         $$PWD/ffmpeg/lib/avdevice.lib \
