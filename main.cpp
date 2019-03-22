@@ -86,18 +86,35 @@ int main(int argc, char* argv[])
     pFormatCtx = avformat_alloc_context();
 
 #if USE_DSHOW
+    //Use dshow
+    //
+    //这里需要先安装 screen-capture-recorder 才能使用dshow采集屏幕
+    //screen-capture-recorder
+    //Website: http://sourceforge.net/projects/screencapturer/
+    //
     AVInputFormat *ifmt=av_find_input_format("dshow");
-    //Set own video device's name
-    if(avformat_open_input(&pFormatCtx,"video=e2eSoft VCam",ifmt,NULL)!=0){
+    if(avformat_open_input(&pFormatCtx,"video=screen-capture-recorder",ifmt,NULL)!=0){
         printf("Couldn't open input stream.\n");
         return -1;
     }
 #else
-    AVInputFormat *ifmt=av_find_input_format("vfwcap");
-    if(avformat_open_input(&pFormatCtx,"0",ifmt,NULL)!=0){
+    //Use gdigrab
+    AVDictionary* options = NULL;
+    //Set some options
+    //grabbing frame rate
+    //av_dict_set(&options,"framerate","5",0);
+    //The distance from the left edge of the screen or desktop
+    //av_dict_set(&options,"offset_x","20",0);
+    //The distance from the top edge of the screen or desktop
+    //av_dict_set(&options,"offset_y","40",0);
+    //Video frame size. The default is to capture the full screen
+    //av_dict_set(&options,"video_size","640x480",0);
+    AVInputFormat *ifmt=av_find_input_format("gdigrab");
+    if(avformat_open_input(&pFormatCtx,"desktop",ifmt,&options)!=0){
         printf("Couldn't open input stream.\n");
         return -1;
     }
+
 #endif
 
     if(avformat_find_stream_info(pFormatCtx,NULL)<0)

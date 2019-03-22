@@ -1,4 +1,4 @@
-从零开始学习音视频编程技术（十二） 录屏软件开发之视频采集
+从零开始学习音视频编程技术（十三） 录屏软件开发之屏幕录像
 
 
 这是Qt的工程，建议使用Qt Creator 打开
@@ -12,7 +12,7 @@ FFMPEG的版本是2.5.2
 
 
 关于代码的解释 请参考：
-http://blog.yundiantech.com/?log=blog&id=15
+http://blog.yundiantech.com/?log=blog&id=16
 
 
 Qt开发环境的搭建 请参考：
