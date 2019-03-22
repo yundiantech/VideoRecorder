@@ -1,25 +1,30 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2015-01-06T22:20:29
+# Project created by QtCreator 2015-04-01T17:15:51
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = VideoRecorder
 TEMPLATE = app
 
-
 SOURCES += src/main.cpp\
         src/mainwindow.cpp \
-    src/savevideofile.cpp \
-    src/screenrecorder.cpp
+    src/video/savevideofile.cpp \
+    src/video/screenrecorder.cpp \
+    src/widget/selectrect.cpp \
+    src/widget/pushpoint.cpp \
+    src/video/getvideothread.cpp
 
 HEADERS  += src/mainwindow.h \
-    src/savevideofile.h \
-    src/screenrecorder.h
+    src/video/savevideofile.h \
+    src/video/screenrecorder.h \
+    src/widget/selectrect.h \
+    src/widget/pushpoint.h \
+    src/video/getvideothread.h
 
 FORMS    += src/mainwindow.ui
 
@@ -36,6 +41,3 @@ LIBS += $$PWD/lib/ffmpeg/lib/avcodec.lib \
         $$PWD/lib/ffmpeg/lib/swresample.lib \
         $$PWD/lib/ffmpeg/lib/swscale.lib \
         $$PWD/lib/SDL2/lib/x86/SDL2.lib
-
-LIBS += -lwinmm
-LIBS += -lws2_32

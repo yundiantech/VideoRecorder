@@ -1,4 +1,4 @@
-从零开始学习音视频编程技术（二十） 录屏软件开发之录屏生成MP4
+从零开始学习音视频编程技术（二十一） 录屏软件开发之最终完善
 
 
 这是Qt的工程，建议使用Qt Creator 打开
@@ -12,7 +12,7 @@ FFMPEG的版本是2.5.2
 
 
 关于代码的解释 请参考：
-http://blog.yundiantech.com/?log=blog&id=27
+http://blog.yundiantech.com/?log=blog&id=28
 
 
 Qt开发环境的搭建 请参考：

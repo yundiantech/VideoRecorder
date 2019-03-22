@@ -1,4 +1,4 @@
-﻿
+
 /**
  * 叶海辉
  * QQ群121376426
@@ -7,44 +7,78 @@
 
 #include "savevideofile.h"
 
-uint8_t picture_buf[2000*2000*4];
-bool isStop = false;
+#define STREAM_PIX_FMT PIX_FMT_YUV420P /* default pix_fmt */
 
-static float t, tincr, tincr2;
-static int16_t *samples;
-static uint8_t *audio_outbuf;
-static int audio_outbuf_size;
-int audio_input_frame_size;
+static int writeVideoThreadFunc(void *arg);
 
-int WIDTH;
-int HEIGHT;
-
-
-/**************************************************************/
-/* audio output */
-
-
-struct BufferDataNode
+SaveVideoFileThread::SaveVideoFileThread()
 {
-    uint8_t * buffer;
-    int bufferSize;
-    BufferDataNode * next;
-};
+    isStop = false;
 
-SDL_mutex *videoMutex = SDL_CreateMutex();
-BufferDataNode * videoDataQueneHead = NULL;
-BufferDataNode * videoDataQueneTail = NULL;
+    m_containsVideo = true;
+    m_containsAudio = true;
 
-SDL_mutex *audioMutex = SDL_CreateMutex();
-BufferDataNode * AudioDataQueneHead = NULL;
-BufferDataNode * AudioDataQueneTail = NULL;
+    videoMutex = SDL_CreateMutex();
+    videoDataQueneHead = NULL;
+    videoDataQueneTail = NULL;
 
-void videoDataQuene_Input(uint8_t * buffer,int size)
+    audioMutex = SDL_CreateMutex();
+    AudioDataQueneHead = NULL;
+    AudioDataQueneTail = NULL;
+
+    videoBufferCount = 0;
+    audioBufferCount = 0;
+
+    m_videoFrameRate = 15;
+
+    lastVideoNode = NULL;
+
+    mBitRate = 450000;
+
+    audio_pts = 0;
+    video_pts = 0;
+
+}
+
+SaveVideoFileThread::~SaveVideoFileThread()
 {
+
+}
+
+void SaveVideoFileThread::setContainsVideo(bool value)
+{
+    m_containsVideo = value;
+}
+
+void SaveVideoFileThread::setContainsAudio(bool value)
+{
+    m_containsAudio = value;
+}
+
+void SaveVideoFileThread::setVideoFrameRate(int value)
+{
+    m_videoFrameRate = value;
+}
+
+void SaveVideoFileThread::setFileName(char *str)
+{
+    memset(filename,0x0,128);
+    strcpy(filename,str);
+}
+
+void SaveVideoFileThread::setQuantity(int value)
+{
+    mBitRate = 450000 + (value - 5) * 50000;
+}
+
+void SaveVideoFileThread::videoDataQuene_Input(uint8_t * buffer,int size,long time)
+{
+//    qDebug()<<"void SaveVideoFileThread::videoDataQuene_Input(uint8_t * buffer,int size,long time)"<<time;
     BufferDataNode * node = (BufferDataNode*)malloc(sizeof(BufferDataNode));
 //    node->buffer = (uint8_t *)malloc(size);
     node->bufferSize = size;
     node->next = NULL;
+    node->time = time;
 
     node->buffer = buffer;
 //    memcpy(node->buffer,buffer,size);
@@ -62,10 +96,89 @@ void videoDataQuene_Input(uint8_t * buffer,int size)
 
     videoDataQueneTail = node;
 
+    videoBufferCount++;
+
     SDL_UnlockMutex(videoMutex);
 }
 
-static BufferDataNode *videoDataQuene_get()
+//BufferDataNode *SaveVideoFileThread::videoDataQuene_get(double time)
+//{
+//    BufferDataNode * node = NULL;
+
+//    SDL_LockMutex(videoMutex);
+
+//    if (videoDataQueneHead != NULL)
+//    {
+//        node = videoDataQueneHead;
+
+////qDebug()<<"111:"<<time<<node->time<<videoBufferCount;
+//        if (time >= node->time)
+//        {
+////            qDebug()<<"000";
+//            if (videoDataQueneHead->next != NULL)
+//            {
+////                qDebug()<<"111";
+//                while(node != NULL)
+//                {
+////                    qDebug()<<"222";
+//                    if (node->next == NULL)
+//                    {
+//                        break;
+//                    }
+////qDebug()<<"333"<<time << node->next->time;
+//                    if (time < node->next->time)
+//                    {
+//                        break;
+//                    }
+
+//                    BufferDataNode * tmp = node;
+////qDebug()<<"222:"<<node->time<<time;
+//                    node = node->next;
+
+//                    videoBufferCount--;
+
+//                    av_free(tmp->buffer);
+//                    free(tmp);
+//                }
+//            }
+//        }
+//        else
+//        {
+//            node = lastVideoNode;
+//        }
+
+//        if (videoDataQueneTail == node)
+//        {
+//            videoDataQueneTail = NULL;
+//        }
+
+//        if (node != NULL && node != lastVideoNode)
+//        {
+////            qDebug()<<"00000000";
+//            videoDataQueneHead = node->next;
+//            videoBufferCount--;
+//        }
+
+//    }
+////    qDebug()<<videoBufferCount;
+//    SDL_UnlockMutex(videoMutex);
+////qDebug()<<"00000000999";
+//    return node;
+//}
+
+/**
+ * @brief SaveVideoFileThread::videoDataQuene_get
+ * 由于采集屏幕获取到的图像每秒钟的张数是不固定的
+ * 而我们是用固定帧率的方式来写视频
+ * 因此需要保证每秒钟的视频图像张数都是固定的
+ * 下面这个函数就是做了这个操作：
+ * 1.视频数据不足的时候重复使用上一帧
+ * 2.视频数据太多的时候 丢掉一些
+ * @param time
+ * @return
+ */
+
+BufferDataNode *SaveVideoFileThread::videoDataQuene_get(double time)
 {
     BufferDataNode * node = NULL;
 
@@ -74,13 +187,56 @@ static BufferDataNode *videoDataQuene_get()
     if (videoDataQueneHead != NULL)
     {
         node = videoDataQueneHead;
+        if (time >= node->time)
+        {
+            while(node != NULL)
+            {
+                if (node->next == NULL)
+                {
+                    if (isStop)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        //队列里面才一帧数据 先不处理
+                        SDL_UnlockMutex(videoMutex);
+                        return NULL;
+                    }
+                }
 
-        if (videoDataQueneTail == videoDataQueneHead)
+                if (time < node->next->time)
+                {
+                    break;
+                }
+
+                BufferDataNode * tmp = node;
+                node = node->next;
+
+                videoDataQueneHead = node;
+
+                videoBufferCount--;
+                av_free(tmp->buffer);
+                free(tmp);
+            }
+
+        }
+        else
+        {
+            node = lastVideoNode;
+        }
+
+        if (videoDataQueneTail == node)
         {
             videoDataQueneTail = NULL;
         }
 
-        videoDataQueneHead = videoDataQueneHead->next;
+        if (node != NULL && node != lastVideoNode)
+        {
+            videoDataQueneHead = node->next;
+            videoBufferCount--;
+        }
+
     }
 
     SDL_UnlockMutex(videoMutex);
@@ -88,13 +244,14 @@ static BufferDataNode *videoDataQuene_get()
     return node;
 }
 
-void audioDataQuene_Input(uint8_t * buffer,int size)
+void SaveVideoFileThread::audioDataQuene_Input(uint8_t * buffer,int size)
 {
     BufferDataNode * node = (BufferDataNode*)malloc(sizeof(BufferDataNode));
-    node->buffer = (uint8_t *)malloc(size);
+//    node->buffer = buffer;
     node->bufferSize = size;
     node->next = NULL;
 
+    node->buffer = (uint8_t *)malloc(size);
     memcpy(node->buffer,buffer,size);
 
     SDL_LockMutex(audioMutex);
@@ -110,10 +267,12 @@ void audioDataQuene_Input(uint8_t * buffer,int size)
 
     AudioDataQueneTail = node;
 
+    audioBufferCount++;
+
     SDL_UnlockMutex(audioMutex);
 }
 
-static BufferDataNode *audioDataQuene_get()
+BufferDataNode *SaveVideoFileThread::audioDataQuene_get()
 {
     BufferDataNode * node = NULL;
 
@@ -129,6 +288,9 @@ static BufferDataNode *audioDataQuene_get()
         }
 
         AudioDataQueneHead = AudioDataQueneHead->next;
+
+        audioBufferCount--;
+
     }
 
     SDL_UnlockMutex(audioMutex);
@@ -136,10 +298,11 @@ static BufferDataNode *audioDataQuene_get()
     return node;
 }
 
+
 /*
  * add an audio output stream
  */
-static AVStream *add_audio_stream(AVFormatContext *oc, AVCodecID codec_id)
+AVStream *SaveVideoFileThread::add_audio_stream(AVFormatContext *oc, AVCodecID codec_id)
 {
     AVCodecContext *c;
     AVStream *st;
@@ -157,9 +320,13 @@ static AVStream *add_audio_stream(AVFormatContext *oc, AVCodecID codec_id)
 
     /* put sample parameters */
     c->sample_fmt = AV_SAMPLE_FMT_S16;
-    c->bit_rate = 44100;
-    c->sample_rate = 44100;
+    c->bit_rate = 64000;
+    c->sample_rate = 22050;
     c->channels = 2;
+
+//    c->bit_rate = 9600;
+//    c->sample_rate = 11025;
+//    c->channels = 1;
 
     // some formats want stream headers to be separate
     if (oc->oformat->flags & AVFMT_GLOBALHEADER)
@@ -168,7 +335,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, AVCodecID codec_id)
     return st;
 }
 
-static void open_audio(AVFormatContext *oc, AVStream *st)
+void SaveVideoFileThread::open_audio(AVFormatContext *oc, AVStream *st)
 {
     AVCodecContext *c;
     AVCodec *codec;
@@ -216,7 +383,7 @@ static void open_audio(AVFormatContext *oc, AVStream *st)
     samples = (int16_t *)av_malloc(audio_input_frame_size * 2 * c->channels);
 }
 
-static void write_audio_frame(AVFormatContext *oc, AVStream *st)
+bool SaveVideoFileThread::write_audio_frame(AVFormatContext *oc, AVStream *st)
 {
     AVCodecContext *c;
     AVPacket pkt;
@@ -228,16 +395,17 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     if (node == NULL)
     {
-        SDL_Delay(1); //延时1ms
-        return;
+        return false;
     }
     else
     {
         memcpy(samples,node->buffer, node->bufferSize);
-
+//    qDebug()<<"size:"<<node->bufferSize<<audio_input_frame_size;
         free(node->buffer);
         free(node);
     }
+
+//    memset(samples,0,audio_input_frame_size * 2 * c->channels); //静音
 
 //    fread(samples, 1, audio_input_frame_size*4, pcmInFp);
 
@@ -247,16 +415,21 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
         pkt.pts= av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
     pkt.flags |= AV_PKT_FLAG_KEY;
     pkt.stream_index = st->index;
+    pkt.dts = pkt.pts;
     pkt.data = audio_outbuf;
 
+//    pkt.pts = 0;
+//qDebug()<<"audio pts"<<pkt.duration<<pkt.pos<<pkt.dts<<pkt.pts;
     /* write the compressed frame in the media file */
     if (av_interleaved_write_frame(oc, &pkt) != 0) {
         fprintf(stderr, "Error while writing audio frame\n");
         exit(1);
     }
+
+    return true;
 }
 
-static void close_audio(AVFormatContext *oc, AVStream *st)
+void SaveVideoFileThread::close_audio(AVFormatContext *oc, AVStream *st)
 {
     avcodec_close(st->codec);
 
@@ -264,15 +437,9 @@ static void close_audio(AVFormatContext *oc, AVStream *st)
     av_free(audio_outbuf);
 }
 
-/**************************************************************/
-/* video output */
-
-static AVFrame *picture, *tmp_picture;
-static uint8_t *video_outbuf;
-static int video_outbuf_size;
 
 /* add a video output stream */
-static AVStream *add_video_stream(AVFormatContext *oc, AVCodecID codec_id)
+AVStream *SaveVideoFileThread::add_video_stream(AVFormatContext *oc, AVCodecID codec_id)
 {
     AVCodecContext *c;
     AVStream *st;
@@ -297,7 +464,7 @@ static AVStream *add_video_stream(AVFormatContext *oc, AVCodecID codec_id)
     c->codec_id = codec_id;
 
     /* put sample parameters */
-    c->bit_rate = 400000;
+    c->bit_rate = mBitRate;
     /* resolution must be a multiple of two */
     c->width = WIDTH;
     c->height = HEIGHT;
@@ -305,10 +472,14 @@ static AVStream *add_video_stream(AVFormatContext *oc, AVCodecID codec_id)
        of which frame timestamps are represented. for fixed-fps content,
        timebase should be 1/framerate and timestamp increments should be
        identically 1. */
-    c->time_base.den = 10;
+    c->time_base.den = m_videoFrameRate;
     c->time_base.num = 1;
-    c->gop_size = 12; /* emit one intra frame every twelve frames at most */
-    c->pix_fmt = PIX_FMT_YUV420P;
+//    c->gop_size = 12; /* emit one intra frame every twelve frames at most */
+    c->gop_size = m_videoFrameRate;
+    c->pix_fmt = STREAM_PIX_FMT;
+
+    c->b_frame_strategy = 0;
+
     if (c->codec_id == CODEC_ID_MPEG2VIDEO) {
         /* just for testing, we also add B frames */
         c->max_b_frames = 2;
@@ -346,14 +517,12 @@ static AVFrame *alloc_picture(enum PixelFormat pix_fmt, int width, int height)
     return picture;
 }
 
-static void open_video(AVFormatContext *oc, AVStream *st)
+void SaveVideoFileThread::open_video(AVFormatContext *oc, AVStream *st)
 {
     AVCodec *codec;
     AVCodecContext *c;
 
     c = st->codec;
-
-
 
     // Set Option
     AVDictionary *param = 0;
@@ -362,19 +531,18 @@ static void open_video(AVFormatContext *oc, AVStream *st)
     av_dict_set(&param, "preset", "superfast", 0);
     av_dict_set(&param, "tune", "zerolatency", 0);  //实现实时编码
 
-qDebug()<<c->codec_id;
     codec = avcodec_find_encoder(c->codec_id);
     if (!codec){
-      printf("Can not find video encoder!\n");
+      fprintf(stderr,"Can not find video encoder!\n");
       exit(1);
     }
-qDebug()<<"333";
+
 int ret = 0;
     if (ret = avcodec_open2(c, codec,&param) < 0){
-      qDebug()<<("Failed to open video encoder!\n")<<ret;
+      fprintf(stderr,"Failed to open video encoder!\n");
       exit(1);
     }
-qDebug()<<"333";
+
 //    /* find the video encoder */
 //    codec = avcodec_find_encoder(c->codec_id);
 //    if (!codec) {
@@ -414,7 +582,7 @@ qDebug()<<"333";
     }
 }
 
-static void write_video_frame(AVFormatContext *oc, AVStream *st)
+bool SaveVideoFileThread::write_video_frame(AVFormatContext *oc, AVStream *st, double time)
 {
 
     int out_size, ret;
@@ -422,21 +590,32 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
     c = st->codec;
 
-    BufferDataNode *node = videoDataQuene_get();
+    BufferDataNode *node = videoDataQuene_get(time);
 
+    if (node != NULL)
+    {
+        if (node != lastVideoNode)
+        {
+            if (lastVideoNode != NULL)
+            {
+                av_free(lastVideoNode->buffer);
+                free(lastVideoNode);
+            }
+
+            lastVideoNode = node;
+        }
+    }
+
+    ///没有视频数据 则先返回 等待视频数据
     if (node == NULL)
     {
-        SDL_Delay(1); //延时1ms
-        return;
+        return false;
     }
     else
     {
         int y_size = c->width * c->height;
 
         memcpy(picture_buf,node->buffer, y_size*3/2);
-
-        av_free(node->buffer);
-        free(node);
 
         picture->data[0] = picture_buf;  // 亮度Y
         picture->data[1] = picture_buf+ y_size;  // U
@@ -473,6 +652,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
             /* write the compressed frame in the media file */
             ret = av_interleaved_write_frame(oc, &pkt);
+
         } else {
             ret = 0;
         }
@@ -483,12 +663,14 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         exit(1);
     }
 
+    return true;
+
 }
 
-static void close_video(AVFormatContext *oc, AVStream *st)
+void SaveVideoFileThread::close_video(AVFormatContext *oc, AVStream *st)
 {
     avcodec_close(st->codec);
-    av_free(picture->data[0]);
+//    av_free(picture_buf);
     av_free(picture);
     if (tmp_picture) {
         av_free(tmp_picture->data[0]);
@@ -497,28 +679,63 @@ static void close_video(AVFormatContext *oc, AVStream *st)
     av_free(video_outbuf);
 }
 
-int encode_thread(void *arg)
+double SaveVideoFileThread::getVideoPts()
 {
-    const char *filename;
+    return video_pts;
+}
+
+double SaveVideoFileThread::getAudioPts()
+{
+    return audio_pts;
+}
+
+void SaveVideoFileThread::setWidth(int width,int height)
+{
+    WIDTH = width;
+    HEIGHT = height;
+}
+
+
+bool SaveVideoFileThread::startWrite()
+{
+    isStop = false;
+
+    ///创建一个线程专门用来解码视频
+    SDL_CreateThread(writeVideoThreadFunc, "writeVideoThreadFunc", this);
+
+    return true;
+}
+
+bool SaveVideoFileThread::stopWrite()
+{
+    isStop = true;
+
+    return true;
+}
+
+int writeVideoThreadFunc(void *arg)
+{
+    SaveVideoFileThread *pointer = (SaveVideoFileThread *) arg;
+
+//    const char *filename;
     AVOutputFormat *fmt;
     AVFormatContext *oc;
     AVStream *audio_st, *video_st;
-    double audio_pts, video_pts;
+
     int i;
 
-    /* initialize libavcodec, and register all codecs and formats */
-    av_register_all();
-
-    filename = "a.mp4";
+    /// ffmpegg可以根据文件名称自动获取视频格式
+    /// 如需换别的格式 只需要改文件名和对应的format_name（就是下面的Mp4）即可
+    /// 因此无需了解具体的视频封装格式
 
     /* allocate the output media context */
-    avformat_alloc_output_context2(&oc, NULL, "mp4", filename);
+    avformat_alloc_output_context2(&oc, NULL, "mp4", pointer->filename);
     if (!oc) {
-        qDebug()<<("Could not deduce output format from file extension: using MPEG.\n");
-        avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
+        fprintf(stderr,"Could not deduce output format from file extension: using MPEG.\n");
+        avformat_alloc_output_context2(&oc, NULL, "mpeg", pointer->filename);
     }
     if (!oc) {
-        return 1;
+        return -1;
     }
     fmt = oc->oformat;
 
@@ -527,29 +744,37 @@ int encode_thread(void *arg)
     video_st = NULL;
     audio_st = NULL;
 
-    qDebug()<<fmt->video_codec;
-    if (fmt->video_codec != CODEC_ID_NONE) {
-        video_st = add_video_stream(oc, fmt->video_codec);
+    pointer->picture = NULL;
+    pointer->isStop = false;
+
+    if (pointer->m_containsVideo)
+    {
+        if (fmt->video_codec != CODEC_ID_NONE) {
+            video_st = pointer->add_video_stream(oc, AV_CODEC_ID_H264);
+        }
     }
-    qDebug()<<"333";
-    if (fmt->audio_codec != CODEC_ID_NONE) {
-        audio_st = add_audio_stream(oc, fmt->audio_codec);
+
+    if (pointer->m_containsAudio)
+    {
+        if (fmt->audio_codec != CODEC_ID_NONE) {
+            audio_st = pointer->add_audio_stream(oc, AV_CODEC_ID_AAC);
+        }
     }
-qDebug()<<"444";
-    av_dump_format(oc, 0, filename, 1);
+
+    av_dump_format(oc, 0, pointer->filename, 1);
 
     /* now that all the parameters are set, we can open the audio and
        video codecs and allocate the necessary encode buffers */
     if (video_st)
-        open_video(oc, video_st);
+        pointer->open_video(oc, video_st);
     if (audio_st)
-        open_audio(oc, audio_st);
-qDebug()<<"777";
+        pointer->open_audio(oc, audio_st);
+
     /* open the output file, if needed */
     if (!(fmt->flags & AVFMT_NOFILE)) {
-        if (avio_open(&oc->pb, filename, AVIO_FLAG_WRITE) < 0) {
-            fprintf(stderr, "Could not open '%s'\n", filename);
-            return 1;
+        if (avio_open(&oc->pb, pointer->filename, AVIO_FLAG_WRITE) < 0) {
+            fprintf(stderr,"Could not open %s",pointer->filename);
+            return -1;
         }
     }
 
@@ -557,31 +782,43 @@ qDebug()<<"777";
 //    av_write_header(oc);
     avformat_write_header(oc,NULL);
 
-    picture->pts = 0;
-    while(!isStop)
+    if (pointer->picture)
+    {
+        pointer->picture->pts = 0;
+    }
+
+    while(1)
     {
         /* compute current audio and video time */
         if (audio_st)
-            audio_pts = (double)audio_st->pts.val * audio_st->time_base.num / audio_st->time_base.den;
+            pointer->audio_pts = (double)audio_st->pts.val * audio_st->time_base.num / audio_st->time_base.den;
         else
-            audio_pts = 0.0;
+            pointer->audio_pts = 0.0;
 
         if (video_st)
-            video_pts = (double)video_st->pts.val * video_st->time_base.num / video_st->time_base.den;
+            pointer->video_pts = (double)video_st->pts.val * video_st->time_base.num / video_st->time_base.den;
         else
-            video_pts = 0.0;
-
-        qDebug()<<audio_pts<<video_pts;
-
-//        if ((!audio_st || audio_pts >= STREAM_DURATION) &&
-//            (!video_st || video_pts >= STREAM_DURATION))
-//            break;
+            pointer->video_pts = 0.0;
 
         /* write interleaved audio and video frames */
-        if (!video_st || (video_st && audio_st && audio_pts < video_pts)) {
-            write_audio_frame(oc, audio_st);
+        if (!video_st || (video_st && audio_st && pointer->audio_pts < pointer->video_pts)) {
+            if (!pointer->write_audio_frame(oc, audio_st))
+            {
+                if (pointer->isStop)
+                {
+                    break;
+                }
+                SDL_Delay(1); //延时1ms
+            }
         } else {
-            write_video_frame(oc, video_st);
+            if (!pointer->write_video_frame(oc, video_st,pointer->video_pts*1000))
+            {
+                if (pointer->isStop)
+                {
+                    break;
+                }
+                SDL_Delay(1); //延时1ms
+            }
         }
     }
 
@@ -589,9 +826,9 @@ qDebug()<<"777";
 
     /* close each codec */
     if (video_st)
-        close_video(oc, video_st);
+        pointer->close_video(oc, video_st);
     if (audio_st)
-        close_audio(oc, audio_st);
+        pointer->close_audio(oc, audio_st);
 
     /* free the streams */
     for(i = 0; i < oc->nb_streams; i++) {
@@ -607,30 +844,8 @@ qDebug()<<"777";
     /* free the stream */
     av_free(oc);
 
-    return 0;
+    pointer->audio_pts = 0;
+    pointer->video_pts = 0;
+
 }
 
-void setWidth(int width,int height)
-{
-    WIDTH = width;
-    HEIGHT = height;
-}
-
-bool startEncode()
-{
-    SDL_Thread *encodeThreadId = SDL_CreateThread(encode_thread, "parse_thread", NULL);
-
-    if (!encodeThreadId)
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool stopEncode()
-{
-    isStop = true;
-
-    return true;
-}
