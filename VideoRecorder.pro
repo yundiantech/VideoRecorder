@@ -8,14 +8,20 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = VideoRecorder_7
+TARGET = VideoRecorder
 TEMPLATE = app
 
-SOURCES += src/main.cpp
 
-HEADERS  +=
+SOURCES += src/main.cpp\
+        src/mainwindow.cpp \
+    src/savevideofile.cpp \
+    src/screenrecorder.cpp
 
-FORMS    +=
+HEADERS  += src/mainwindow.h \
+    src/savevideofile.h \
+    src/screenrecorder.h
+
+FORMS    += src/mainwindow.ui
 
 INCLUDEPATH += $$PWD/lib/ffmpeg/include \
                $$PWD/lib/SDL2/include \
@@ -31,4 +37,5 @@ LIBS += $$PWD/lib/ffmpeg/lib/avcodec.lib \
         $$PWD/lib/ffmpeg/lib/swscale.lib \
         $$PWD/lib/SDL2/lib/x86/SDL2.lib
 
-
+LIBS += -lwinmm
+LIBS += -lws2_32
