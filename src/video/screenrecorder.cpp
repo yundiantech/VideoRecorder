@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -51,7 +51,7 @@ ErroCode ScreenRecorder::init(QString videoDevName, bool useVideo, QString audio
         ErroCode code = m_videoThread->init(videoDevName,useVideo,"",false);
         if (code != SUCCEED)
         {
-            qDebug()<<"è§†é¢‘åˆå§‹åŒ–å¤±è´¥";
+            qDebug()<<"ÊÓÆµ³õÊ¼»¯Ê§°Ü";
             return code;
         }
     }
@@ -61,7 +61,7 @@ ErroCode ScreenRecorder::init(QString videoDevName, bool useVideo, QString audio
         ErroCode code = m_audioThread->init("",false,audioDevName,useAudio);
         if (code != SUCCEED)
         {
-            qDebug()<<"éŸ³é¢‘åˆå§‹åŒ–å¤±è´¥";
+            qDebug()<<"ÒôÆµ³õÊ¼»¯Ê§°Ü";
             return code;
         }
     }

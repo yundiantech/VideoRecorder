@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -30,20 +30,20 @@ public:
     void restoreRecord();
     void stopRecord();
 
-    void setPicRange(int x,int y,int w,int h); //è®¾ç½®å½•åˆ¶å±å¹•çš„åŒºåŸŸ
+    void setPicRange(int x,int y,int w,int h); //ÉèÖÃÂ¼ÖÆÆÁÄ»µÄÇøÓò
     void setVideoFrameRate(int value);
 
     double getVideoPts();
     double getAudioPts();
 
 private:
-    SaveVideoFileThread * m_saveVideoFileThread; //ä¿å­˜æˆè§†é¢‘æ–‡ä»¶çš„çº¿ç¨‹
+    SaveVideoFileThread * m_saveVideoFileThread; //±£´æ³ÉÊÓÆµÎÄ¼şµÄÏß³Ì
 
-    /// æŠŠè§†é¢‘å’ŒéŸ³é¢‘æ”¾åˆ°ä¸€èµ·è·å–
-    /// avformat_free_contexté‡Šæ”¾çš„æ—¶å€™ä¼šå¥”æºƒ
-    /// æ— å¥ˆï¼Œåªèƒ½æŠŠä»–ä»¬æ”¾åˆ°2ä¸ªçº¿ç¨‹ä¸­æ‰§è¡Œ
-    GetVideoThread *m_videoThread; //è·å–è§†é¢‘çš„çº¿ç¨‹
-    GetVideoThread *m_audioThread; //è·å–éŸ³é¢‘çš„çº¿ç¨‹
+    /// °ÑÊÓÆµºÍÒôÆµ·Åµ½Ò»Æğ»ñÈ¡
+    /// avformat_free_contextÊÍ·ÅµÄÊ±ºò»á±¼À£
+    /// ÎŞÄÎ£¬Ö»ÄÜ°ÑËûÃÇ·Åµ½2¸öÏß³ÌÖĞÖ´ĞĞ
+    GetVideoThread *m_videoThread; //»ñÈ¡ÊÓÆµµÄÏß³Ì
+    GetVideoThread *m_audioThread; //»ñÈ¡ÒôÆµµÄÏß³Ì
 
     bool m_useVideo;
     bool m_useAudio;

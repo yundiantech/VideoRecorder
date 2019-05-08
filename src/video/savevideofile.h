@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -36,9 +36,9 @@ struct BufferDataNode
 
 /**
  * @brief The SaveVideoFileThread class
- * ä¿å­˜ç”Ÿæˆè§†é¢‘
- * ä¸»è¦å‚è€ƒäº† ffmpegçš„output_example.c
- * output_example.cå¯ä»¥è‡ªè¡Œç™¾åº¦ä¸‹è½½åˆ°
+ * ±£´æÉú³ÉÊÓÆµ
+ * Ö÷Òª²Î¿¼ÁË ffmpegµÄoutput_example.c
+ * output_example.c¿ÉÒÔ×ÔĞĞ°Ù¶ÈÏÂÔØµ½
  */
 
 class SaveVideoFileThread
@@ -78,7 +78,7 @@ public:
 
     int m_videoFrameRate;
 
-    uint8_t picture_buf[2000*2000*4]; //è¿™ä¸ªå¤§å°åªè¦å¤Ÿå­˜ä¸€å¸§h264å°±è¡Œï¼Œè¿™é‡Œå®é™…ä¸Šä¸éœ€è¦è¿™ä¹ˆå¤§
+    uint8_t picture_buf[2000*2000*4]; //Õâ¸ö´óĞ¡Ö»Òª¹»´æÒ»Ö¡h264¾ÍĞĞ£¬ÕâÀïÊµ¼ÊÉÏ²»ĞèÒªÕâÃ´´ó
     bool isStop;
 
     float t, tincr, tincr2;
@@ -108,7 +108,7 @@ public:
     BufferDataNode * AudioDataQueneHead;
     BufferDataNode * AudioDataQueneTail;
 
-    BufferDataNode * lastVideoNode; //ä¸Šä¸€æ¬¡çš„å¸§ï¼ˆå¸§ä¸è¶³çš„æ—¶å€™ç”¨ä¸Šä¸€æ¬¡çš„å¸§æ¥è¡¥å…¨ï¼‰
+    BufferDataNode * lastVideoNode; //ÉÏÒ»´ÎµÄÖ¡£¨Ö¡²»×ãµÄÊ±ºòÓÃÉÏÒ»´ÎµÄÖ¡À´²¹È«£©
     int videoBufferCount;
     int audioBufferCount;
 

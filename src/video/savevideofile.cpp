@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -168,12 +168,12 @@ void SaveVideoFileThread::videoDataQuene_Input(uint8_t * buffer,int size,long ti
 
 /**
  * @brief SaveVideoFileThread::videoDataQuene_get
- * ç”±äºŽé‡‡é›†å±å¹•èŽ·å–åˆ°çš„å›¾åƒæ¯ç§’é’Ÿçš„å¼ æ•°æ˜¯ä¸å›ºå®šçš„
- * è€Œæˆ‘ä»¬æ˜¯ç”¨å›ºå®šå¸§çŽ‡çš„æ–¹å¼æ¥å†™è§†é¢‘
- * å› æ­¤éœ€è¦ä¿è¯æ¯ç§’é’Ÿçš„è§†é¢‘å›¾åƒå¼ æ•°éƒ½æ˜¯å›ºå®šçš„
- * ä¸‹é¢è¿™ä¸ªå‡½æ•°å°±æ˜¯åšäº†è¿™ä¸ªæ“ä½œï¼š
- * 1.è§†é¢‘æ•°æ®ä¸è¶³çš„æ—¶å€™é‡å¤ä½¿ç”¨ä¸Šä¸€å¸§
- * 2.è§†é¢‘æ•°æ®å¤ªå¤šçš„æ—¶å€™ ä¸¢æŽ‰ä¸€äº›
+ * ÓÉÓÚ²É¼¯ÆÁÄ»»ñÈ¡µ½µÄÍ¼ÏñÃ¿ÃëÖÓµÄÕÅÊýÊÇ²»¹Ì¶¨µÄ
+ * ¶øÎÒÃÇÊÇÓÃ¹Ì¶¨Ö¡ÂÊµÄ·½Ê½À´Ð´ÊÓÆµ
+ * Òò´ËÐèÒª±£Ö¤Ã¿ÃëÖÓµÄÊÓÆµÍ¼ÏñÕÅÊý¶¼ÊÇ¹Ì¶¨µÄ
+ * ÏÂÃæÕâ¸öº¯Êý¾ÍÊÇ×öÁËÕâ¸ö²Ù×÷£º
+ * 1.ÊÓÆµÊý¾Ý²»×ãµÄÊ±ºòÖØ¸´Ê¹ÓÃÉÏÒ»Ö¡
+ * 2.ÊÓÆµÊý¾ÝÌ«¶àµÄÊ±ºò ¶ªµôÒ»Ð©
  * @param time
  * @return
  */
@@ -199,7 +199,7 @@ BufferDataNode *SaveVideoFileThread::videoDataQuene_get(double time)
                     }
                     else
                     {
-                        //é˜Ÿåˆ—é‡Œé¢æ‰ä¸€å¸§æ•°æ® å…ˆä¸å¤„ç†
+                        //¶ÓÁÐÀïÃæ²ÅÒ»Ö¡Êý¾Ý ÏÈ²»´¦Àí
                         SDL_UnlockMutex(videoMutex);
                         return NULL;
                     }
@@ -405,7 +405,7 @@ bool SaveVideoFileThread::write_audio_frame(AVFormatContext *oc, AVStream *st)
         free(node);
     }
 
-//    memset(samples,0,audio_input_frame_size * 2 * c->channels); //é™éŸ³
+//    memset(samples,0,audio_input_frame_size * 2 * c->channels); //¾²Òô
 
 //    fread(samples, 1, audio_input_frame_size*4, pcmInFp);
 
@@ -529,7 +529,7 @@ void SaveVideoFileThread::open_video(AVFormatContext *oc, AVStream *st)
     //H.264
     //av_dict_set(&param, "preset", "slow", 0);
     av_dict_set(&param, "preset", "superfast", 0);
-    av_dict_set(&param, "tune", "zerolatency", 0);  //å®žçŽ°å®žæ—¶ç¼–ç 
+    av_dict_set(&param, "tune", "zerolatency", 0);  //ÊµÏÖÊµÊ±±àÂë
 
     codec = avcodec_find_encoder(c->codec_id);
     if (!codec){
@@ -606,7 +606,7 @@ bool SaveVideoFileThread::write_video_frame(AVFormatContext *oc, AVStream *st, d
         }
     }
 
-    ///æ²¡æœ‰è§†é¢‘æ•°æ® åˆ™å…ˆè¿”å›ž ç­‰å¾…è§†é¢‘æ•°æ®
+    ///Ã»ÓÐÊÓÆµÊý¾Ý ÔòÏÈ·µ»Ø µÈ´ýÊÓÆµÊý¾Ý
     if (node == NULL)
     {
         return false;
@@ -617,7 +617,7 @@ bool SaveVideoFileThread::write_video_frame(AVFormatContext *oc, AVStream *st, d
 
         memcpy(picture_buf,node->buffer, y_size*3/2);
 
-        picture->data[0] = picture_buf;  // äº®åº¦Y
+        picture->data[0] = picture_buf;  // ÁÁ¶ÈY
         picture->data[1] = picture_buf+ y_size;  // U
         picture->data[2] = picture_buf+ y_size*5/4; // V
     }
@@ -700,7 +700,7 @@ bool SaveVideoFileThread::startWrite()
 {
     isStop = false;
 
-    ///åˆ›å»ºä¸€ä¸ªçº¿ç¨‹ä¸“é—¨ç”¨æ¥è§£ç è§†é¢‘
+    ///´´½¨Ò»¸öÏß³Ì×¨ÃÅÓÃÀ´½âÂëÊÓÆµ
     SDL_CreateThread(writeVideoThreadFunc, "writeVideoThreadFunc", this);
 
     return true;
@@ -724,9 +724,9 @@ int writeVideoThreadFunc(void *arg)
 
     int i;
 
-    /// ffmpeggå¯ä»¥æ ¹æ®æ–‡ä»¶åç§°è‡ªåŠ¨èŽ·å–è§†é¢‘æ ¼å¼
-    /// å¦‚éœ€æ¢åˆ«çš„æ ¼å¼ åªéœ€è¦æ”¹æ–‡ä»¶åå’Œå¯¹åº”çš„format_nameï¼ˆå°±æ˜¯ä¸‹é¢çš„Mp4ï¼‰å³å¯
-    /// å› æ­¤æ— éœ€äº†è§£å…·ä½“çš„è§†é¢‘å°è£…æ ¼å¼
+    /// ffmpegg¿ÉÒÔ¸ù¾ÝÎÄ¼þÃû³Æ×Ô¶¯»ñÈ¡ÊÓÆµ¸ñÊ½
+    /// ÈçÐè»»±ðµÄ¸ñÊ½ Ö»ÐèÒª¸ÄÎÄ¼þÃûºÍ¶ÔÓ¦µÄformat_name£¨¾ÍÊÇÏÂÃæµÄMp4£©¼´¿É
+    /// Òò´ËÎÞÐèÁË½â¾ßÌåµÄÊÓÆµ·â×°¸ñÊ½
 
     /* allocate the output media context */
     avformat_alloc_output_context2(&oc, NULL, "mp4", pointer->filename);
@@ -808,7 +808,7 @@ int writeVideoThreadFunc(void *arg)
                 {
                     break;
                 }
-                SDL_Delay(1); //å»¶æ—¶1ms
+                SDL_Delay(1); //ÑÓÊ±1ms
             }
         } else {
             if (!pointer->write_video_frame(oc, video_st,pointer->video_pts*1000))
@@ -817,7 +817,7 @@ int writeVideoThreadFunc(void *arg)
                 {
                     break;
                 }
-                SDL_Delay(1); //å»¶æ—¶1ms
+                SDL_Delay(1); //ÑÓÊ±1ms
             }
         }
     }

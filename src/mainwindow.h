@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -42,7 +42,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    /// è®¾ç½®ä¿å­˜çš„è§†é¢‘æ–‡ä»¶çš„è·¯å¾„
+    /// ÉèÖÃ±£´æµÄÊÓÆµÎÄ¼şµÄÂ·¾¶
     void setSaveFile(QString fileName);
 
 public slots:
@@ -62,27 +62,27 @@ private:
     bool isLeftBtnPressed;
     QPoint dragPosition;
 
-    QPropertyAnimation *animation; //åŠ¨ç”»ç±» ç”¨æ¥å®ç°çª—ä½“ä»ä¸Šæ–¹æ…¢æ…¢å‡ºç°
+    QPropertyAnimation *animation; //¶¯»­Àà ÓÃÀ´ÊµÏÖ´°Ìå´ÓÉÏ·½ÂıÂı³öÏÖ
 
-    QString AppDataPath; //ä¿å­˜é…ç½®æ–‡ä»¶çš„ç›®å½•
-    QString SettingFile; //ä¿å­˜é…ç½®æ–‡ä»¶çš„è·¯å¾„
+    QString AppDataPath; //±£´æÅäÖÃÎÄ¼şµÄÄ¿Â¼
+    QString SettingFile; //±£´æÅäÖÃÎÄ¼şµÄÂ·¾¶
 
-    QString saveFileName; //è§†é¢‘è·¯å¾„
+    QString saveFileName; //ÊÓÆµÂ·¾¶
 
     ScreenRecorder *m_screenRecorder;
-    QRect deskRect; //å¯ç”¨æ¡Œé¢å¤§å°
-    SelectRect *selectRectWidget;  //é€‰æ‹©åŒºåŸŸçš„æ§ä»¶
-    QRect rect; //å½“å‰å½•åˆ¶çš„åŒºåŸŸ
-    float m_rate; //å±å¹•å®½é«˜æ¯”
+    QRect deskRect; //¿ÉÓÃ×ÀÃæ´óĞ¡
+    SelectRect *selectRectWidget;  //Ñ¡ÔñÇøÓòµÄ¿Ø¼ş
+    QRect rect; //µ±Ç°Â¼ÖÆµÄÇøÓò
+    float m_rate; //ÆÁÄ»¿í¸ß±È
 
-    QTimer * m_timer; //å®šæ—¶å™¨ ç”¨äºè·å–æ—¶é—´
+    QTimer * m_timer; //¶¨Ê±Æ÷ ÓÃÓÚ»ñÈ¡Ê±¼ä
 
     RecoderState m_recordeState;
 
-    void initDev(); //è·å–å½•éŸ³è®¾å¤‡çš„åˆ—è¡¨
+    void initDev(); //»ñÈ¡Â¼ÒôÉè±¸µÄÁĞ±í
 
-    void loadFile(); //åŠ è½½é…ç½®æ–‡ä»¶
-    void saveFile(); //å†™å…¥é…ç½®æ–‡ä»¶
+    void loadFile(); //¼ÓÔØÅäÖÃÎÄ¼ş
+    void saveFile(); //Ğ´ÈëÅäÖÃÎÄ¼ş
 
 //    QString m_erroMsg;
     bool startRecord();
@@ -93,12 +93,12 @@ private slots:
     void slotToolBtnToggled(bool);
     void slotBtnClicked();
 
-    ///é€‰æ‹©å½•å±åŒºåŸŸç›¸å…³ - Begin
+    ///Ñ¡ÔñÂ¼ÆÁÇøÓòÏà¹Ø - Begin
     void slotSelectRectBtnClick();
     void slotEditRectBtnClick();
     void slotHideRectBtnClick();
     void slotSelectRectFinished(QRect);
-    ///é€‰æ‹©å½•å±åŒºåŸŸç›¸å…³ - End
+    ///Ñ¡ÔñÂ¼ÆÁÇøÓòÏà¹Ø - End
 
     void slotTimerTimeOut();
 

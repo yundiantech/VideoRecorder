@@ -1,7 +1,7 @@
 
 /**
- * Âè∂Êµ∑Ëæâ
- * QQÁæ§121376426
+ * “∂∫£ª‘
+ * QQ»∫121376426
  * http://blog.yundiantech.com/
  */
 
@@ -19,7 +19,7 @@ void Yuv420Cut(int x,int y,int desW,int desH,int srcW,int srcH,uint8_t *srcBuffe
     int yIndex = 0;
     bufferIndex = 0 + x + y*srcW;
     tmpRange = srcW * desH;
-    for (int i=0;i<tmpRange;) //ÈÄêË°åÊã∑Ë¥ùYÂàÜÈáèÊï∞ÊçÆ
+    for (int i=0;i<tmpRange;) //÷––øΩ±¥Y∑÷¡ø ˝æ›
     {
         memcpy(desBuffer+yIndex,srcBuffer+bufferIndex+i,desW);
         i += srcW;
@@ -31,7 +31,7 @@ void Yuv420Cut(int x,int y,int desW,int desH,int srcW,int srcH,uint8_t *srcBuffe
     int uWidthCopy = desW/2;
     bufferIndex = srcW * srcH+x/2 + y /2 *srcW / 2;
     tmpRange = srcW * desH / 4;
-    for (int i=0;i<tmpRange;) //ÈÄêË°åÊã∑Ë¥ùUÂàÜÈáèÊï∞ÊçÆ
+    for (int i=0;i<tmpRange;) //÷––øΩ±¥U∑÷¡ø ˝æ›
     {
         memcpy(desBuffer+uIndex,srcBuffer+bufferIndex+i,uWidthCopy);
         i += uIndexStep;
@@ -44,7 +44,7 @@ void Yuv420Cut(int x,int y,int desW,int desH,int srcW,int srcH,uint8_t *srcBuffe
     int vWidthCopy = desW/2;
     bufferIndex = srcW*srcH + srcW*srcH/4 + x/2 + y /2 *srcW / 2;
     tmpRange = srcW * desH / 4;
-    for (int i=0;i<tmpRange;) //ÈÄêË°åÊã∑Ë¥ùVÂàÜÈáèÊï∞ÊçÆ
+    for (int i=0;i<tmpRange;) //÷––øΩ±¥V∑÷¡ø ˝æ›
     {
         memcpy(desBuffer+vIndex,srcBuffer+bufferIndex+i,vWidthCopy);
         i += vIndexStep;
@@ -102,7 +102,7 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
         QString audioDevOption = QString("audio=%1").arg(audioDevName);
 
         if(avformat_open_input(&pFormatCtx,audioDevOption.toUtf8(),ifmt,NULL)!=0){
-            fprintf(stderr,"Couldn't open input stream audio.ÔºàÊó†Ê≥ïÊâìÂºÄËæìÂÖ•ÊµÅÔºâ\n");
+            fprintf(stderr,"Couldn't open input stream audio.£®Œﬁ∑®¥Úø™ ‰»Î¡˜£©\n");
             return AudioOpenFailed;
         }
 
@@ -113,7 +113,7 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
     {
         QString videoDevOption = QString("video=%1").arg(videoDevName);
         if(avformat_open_input(&pFormatCtx,videoDevOption.toUtf8(),ifmt,NULL)!=0){
-            qDebug()<<"Couldn't open input stream video.ÔºàÊó†Ê≥ïÊâìÂºÄËæìÂÖ•ÊµÅÔºâ\n";
+            qDebug()<<"Couldn't open input stream video.£®Œﬁ∑®¥Úø™ ‰»Î¡˜£©\n";
             return VideoOpenFailed;
         }
     }
@@ -130,7 +130,7 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
             }
         if(videoindex==-1)
         {
-            printf("Didn't find a video stream.ÔºàÊ≤°ÊúâÊâæÂà∞ËßÜÈ¢ëÊµÅÔºâ\n");
+            printf("Didn't find a video stream.£®√ª”–’“µΩ ”∆µ¡˜£©\n");
             return VideoOpenFailed;
         }
 
@@ -169,7 +169,7 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
             }
         if(audioindex==-1)
         {
-            printf("Didn't find a video stream.ÔºàÊ≤°ÊúâÊâæÂà∞ËßÜÈ¢ëÊµÅÔºâ\n");
+            printf("Didn't find a video stream.£®√ª”–’“µΩ ”∆µ¡˜£©\n");
             return AudioOpenFailed;
         }
 
@@ -300,7 +300,7 @@ void GetVideoThread::run()
 
     AVPacket *packet=(AVPacket *)av_malloc(sizeof(AVPacket));
 //    //Output Information-----------------------------
-//    printf("File InformationÔºàÊñá‰ª∂‰ø°ÊÅØÔºâ---------------------\n");
+//    printf("File Information£®Œƒº˛–≈œ¢£©---------------------\n");
 //    av_dump_format(pFormatCtx,0,NULL,0);
 //    printf("-------------------------------------------------\n");
 
@@ -349,7 +349,7 @@ void GetVideoThread::run()
 
             if(ret < 0)
             {
-                printf("video Decode Error.ÔºàËß£Á†ÅÈîôËØØÔºâ\n");
+                printf("video Decode Error.£®Ω‚¬Î¥ÌŒÛ£©\n");
                 return;
             }
 
@@ -366,7 +366,7 @@ void GetVideoThread::run()
                     memcpy(picture_buf+y_size+y_size/4,pFrameYUV->data[2],y_size/4);
                     uint8_t * yuv_buf = (uint8_t *)av_malloc(size);
 
-                    ///Â∞ÜYUVÂõæÂÉèË£ÅÂâ™ÊàêÁõÆÊ†áÂ§ßÂ∞è
+                    ///Ω´YUVÕºœÒ≤√ºÙ≥…ƒø±Í¥Û–°
                     Yuv420Cut(pic_x,pic_y,pic_w,pic_h,pCodecCtx->width,pCodecCtx->height,picture_buf,yuv_buf);
                     m_saveVideoFileThread->videoDataQuene_Input(yuv_buf,yuvSize*3/2,time);
                     av_free(picture_buf);

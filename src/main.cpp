@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -16,14 +16,12 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    QTextCodec *codec = QTextCodec::codecForName("UTF-8"); //èŽ·å–ç³»ç»Ÿç¼–ç 
+    QTextCodec *codec = QTextCodec::codecForName("GBK"); //»ñÈ¡ÏµÍ³±àÂë
     QTextCodec::setCodecForLocale(codec);
-    QTextCodec::setCodecForCStrings(codec);
-    QTextCodec::setCodecForTr(codec);
 
     MainWindow w;
 
-    //ç¬¬äºŒä¸ªå‚æ•°ä¸ºå½•åˆ¶æ–‡ä»¶çš„è·¯å¾„
+    //µÚ¶þ¸ö²ÎÊýÎªÂ¼ÖÆÎÄ¼þµÄÂ·¾¶
     if (argc >= 2)
     {
         QString str = QString(argv[1]);

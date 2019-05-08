@@ -1,7 +1,7 @@
 
 /**
- * å¶æµ·è¾‰
- * QQç¾¤121376426
+ * Ò¶º£»Ô
+ * QQÈº121376426
  * http://blog.yundiantech.com/
  */
 
@@ -32,10 +32,15 @@ MainWindow::MainWindow(QWidget *parent) :
         exit(1);
     }
 
-    setWindowFlags(Qt::WindowStaysOnTopHint|Qt::FramelessWindowHint);  //ä½¿çª—å£çš„æ ‡é¢˜æ éšè—
+    setWindowFlags(Qt::WindowStaysOnTopHint|Qt::FramelessWindowHint);  //Ê¹´°¿ÚµÄ±êÌâÀ¸Òş²Ø
     setAttribute(Qt::WA_TranslucentBackground, true);
 
+#if (QT_VERSION <= QT_VERSION_CHECK(5,0,0))
     AppDataPath = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
+#else
+    AppDataPath = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);
+#endif
+
     QString dirName = AppDataPath + "\\ScreenRecorder\\etc";
     SettingFile = dirName + "\\set.conf";
 
@@ -61,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     selectRectWidget = new SelectRect(NULL,SelectRect::RecordGif);
     QDesktopWidget* desktopWidget = QApplication::desktop();
-    deskRect = desktopWidget->screenGeometry();//è·å–å¯ç”¨æ¡Œé¢å¤§å°
+    deskRect = desktopWidget->screenGeometry();//»ñÈ¡¿ÉÓÃ×ÀÃæ´óĞ¡
     m_rate = deskRect.height() * 1.0 / deskRect.width();
     selectRectWidget->setRate(m_rate);
 
@@ -75,7 +80,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->toolButton_audio,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
     connect(ui->toolButton_file,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
 
-    ///åŠ¨ç”»ç±» ç”¨æ¥å®ç°çª—ä½“ä»ä¸Šæ–¹æ…¢æ…¢å‡ºç°
+    ///¶¯»­Àà ÓÃÀ´ÊµÏÖ´°Ìå´ÓÉÏ·½ÂıÂı³öÏÖ
     animation = new QPropertyAnimation(this, "geometry");
     animation->setDuration(1000);
 
@@ -93,7 +98,7 @@ MainWindow::MainWindow(QWidget *parent) :
     {
         selectRectWidget->show();
         selectRectWidget->setPointHide();
-        ui->hideRectButton->setText("éšè—");
+        ui->hideRectButton->setText(QStringLiteral("Òş²Ø"));
     }
 }
 
@@ -133,7 +138,7 @@ void MainWindow::mousePressEvent(QMouseEvent * event)
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent * event)
-{  //å®ç°é¼ æ ‡ç§»åŠ¨çª—å£
+{  //ÊµÏÖÊó±êÒÆ¶¯´°¿Ú
     if (event->buttons() & Qt::LeftButton)
     {
         if (isLeftBtnPressed)
@@ -249,7 +254,7 @@ void MainWindow::loadFile()
     selectRectWidget->setRect(rect);
     ui->startButton->setEnabled(true);
     selectRectWidget->setVisible(false);
-    ui->hideRectButton->setText("æ˜¾ç¤º");
+    ui->hideRectButton->setText(QStringLiteral("ÏÔÊ¾"));
     ui->startButton->setEnabled(true);
 }
 
@@ -322,8 +327,8 @@ void MainWindow::initDev()
         devFile.close();
     }
 
-    /// æ‰§è¡Œffmpegå‘½ä»¤è¡Œ è·å–éŸ³è§†é¢‘è®¾å¤‡
-    /// è¯·å°†ffmpeg.exeå’Œç¨‹åºæ”¾åˆ°åŒä¸€ä¸ªç›®å½•ä¸‹
+    /// Ö´ĞĞffmpegÃüÁîĞĞ »ñÈ¡ÒôÊÓÆµÉè±¸
+    /// Çë½«ffmpeg.exeºÍ³ÌĞò·Åµ½Í¬Ò»¸öÄ¿Â¼ÏÂ
 
     QString ffmpegPath = QCoreApplication::applicationDirPath() + "/ffmpeg.exe";
     ffmpegPath.replace("/","\\\\");
@@ -459,9 +464,9 @@ void MainWindow::slotToolBtnToggled(bool isChecked)
     else if (QObject::sender() == ui->toolButton_file)
     {
         QString s = QFileDialog::getSaveFileName(
-                   this, "é€‰æ‹©ä¿å­˜æ–‡ä»¶çš„è·¯åŠ²",
-                       saveFileName,//åˆå§‹ç›®å½•
-                    "è§†é¢‘æ–‡ä»¶ (*.mp4);;");
+                   this, QStringLiteral("Ñ¡Ôñ±£´æÎÄ¼şµÄÂ·¾¶"),
+                       saveFileName,//³õÊ¼Ä¿Â¼
+                    QStringLiteral("ÊÓÆµÎÄ¼ş (*.mp4);;"));
          if (!s.isEmpty())
          {
              saveFileName = s.replace("/","\\\\");
@@ -475,11 +480,11 @@ void MainWindow::slotToolBtnToggled(bool isChecked)
 
 void MainWindow::slotSelectRectFinished(QRect re)
 {
-    /// 1.ä¼ ç»™ffmpegç¼–ç çš„å›¾åƒå®½é«˜å¿…é¡»æ˜¯å¶æ•°ã€‚
-    /// 2.å›¾åƒè£å‰ªçš„èµ·å§‹ä½ç½®å’Œç»“æŸä½ç½®ä¹Ÿå¿…é¡»æ˜¯å¶æ•°
-    /// è€Œæ‰‹åŠ¨é€‰æ‹©çš„åŒºåŸŸå¾ˆæœ‰å¯èƒ½ä¼šæ˜¯å¥‡æ•°ï¼Œå› æ­¤éœ€è¦å¤„ç†ä¸€ä¸‹ ç»™ä»–å¼„æˆå¶æ•°
-    /// å¤„ç†çš„æ–¹æ³•å¾ˆç®€ç­”ï¼šå…¶å®å°±æ˜¯å¾€å‰æˆ–è€…å¾€åç§»ä¸€ä¸ªåƒç´ 
-    /// ä¸€ä¸ªåƒç´ çš„å¤§å°è‚‰çœ¼åŸºæœ¬ä¹Ÿçœ‹ä¸å‡ºæ¥å•¥åŒºåˆ«ã€‚
+    /// 1.´«¸øffmpeg±àÂëµÄÍ¼Ïñ¿í¸ß±ØĞëÊÇÅ¼Êı¡£
+    /// 2.Í¼Ïñ²Ã¼ôµÄÆğÊ¼Î»ÖÃºÍ½áÊøÎ»ÖÃÒ²±ØĞëÊÇÅ¼Êı
+    /// ¶øÊÖ¶¯Ñ¡ÔñµÄÇøÓòºÜÓĞ¿ÉÄÜ»áÊÇÆæÊı£¬Òò´ËĞèÒª´¦ÀíÒ»ÏÂ ¸øËûÅª³ÉÅ¼Êı
+    /// ´¦ÀíµÄ·½·¨ºÜ¼ò´ğ£ºÆäÊµ¾ÍÊÇÍùÇ°»òÕßÍùºóÒÆÒ»¸öÏñËØ
+    /// Ò»¸öÏñËØµÄ´óĞ¡ÈâÑÛ»ù±¾Ò²¿´²»³öÀ´É¶Çø±ğ¡£
 
     int x = re.x();
     int y = re.y();
@@ -510,7 +515,7 @@ void MainWindow::slotSelectRectFinished(QRect re)
 
     rect = QRect(x,y,w,h);
 
-    QString str = QString("==å½“å‰åŒºåŸŸ==\n\nèµ·ç‚¹(%1,%2)\n\nå¤§å°(%3 x %4)")
+    QString str = QStringLiteral("==µ±Ç°ÇøÓò==\n\nÆğµã(%1,%2)\n\n´óĞ¡(%3 x %4)")
             .arg(rect.left()).arg(rect.left()).arg(rect.width()).arg(rect.height());
 
     ui->showRectInfoLabel->setText(str);
@@ -518,7 +523,7 @@ void MainWindow::slotSelectRectFinished(QRect re)
     ui->startButton->setEnabled(true);
     ui->editRectButton->setEnabled(true);
     ui->hideRectButton->setEnabled(true);
-    ui->hideRectButton->setText("éšè—");
+    ui->hideRectButton->setText(QStringLiteral("Òş²Ø"));
 
     saveFile();
 
@@ -556,7 +561,7 @@ bool MainWindow::startRecord()
         {
             ret = -2;
             msg = "filepath not set";
-            QMessageBox::critical(this,"æç¤º","è¯·å…ˆè®¾ç½®ä¿å­˜æ–‡ä»¶è·¯å¾„");
+            QMessageBox::critical(this, QStringLiteral("ÌáÊ¾"), QStringLiteral("ÇëÏÈÉèÖÃ±£´æÎÄ¼şÂ·¾¶"));
         }
         else
         {
@@ -566,7 +571,7 @@ bool MainWindow::startRecord()
 
             if (audioDevName.isEmpty())
             {
-                QMessageBox::critical(this,"æç¤º","å‡ºé”™äº†,éŸ³é¢‘æˆ–è§†é¢‘è®¾å¤‡æœªå°±ç»ªï¼Œç¨‹åºæ— æ³•è¿è¡Œï¼");
+                QMessageBox::critical(this, QStringLiteral("ÌáÊ¾"), QStringLiteral("³ö´íÁË,ÒôÆµ»òÊÓÆµÉè±¸Î´¾ÍĞ÷£¬³ÌĞòÎŞ·¨ÔËĞĞ£¡"));
 
                 ret = -3;
                 msg = "audio device not set";
@@ -589,7 +594,7 @@ bool MainWindow::startRecord()
                 }
                 else
                 {
-                    QMessageBox::critical(this,"æç¤º","å‡ºé”™äº†,åˆå§‹åŒ–å½•å±è®¾å¤‡å¤±è´¥ï¼");
+                    QMessageBox::critical(this, QStringLiteral("ÌáÊ¾"), QStringLiteral("³ö´íÁË,³õÊ¼»¯Â¼ÆÁÉè±¸Ê§°Ü£¡"));
 
                     ret = -4;
                     msg = "init screen device failed!";
@@ -607,7 +612,7 @@ bool MainWindow::startRecord()
                 }
                 else
                 {
-                    QMessageBox::critical(this,"æç¤º","å‡ºé”™äº†,åˆå§‹åŒ–éŸ³é¢‘è®¾å¤‡å¤±è´¥ï¼");
+                    QMessageBox::critical(this, QStringLiteral("ÌáÊ¾"), QStringLiteral("³ö´íÁË,³õÊ¼»¯ÒôÆµÉè±¸Ê§°Ü£¡"));
                     ret = -5;
                     msg = "init audio device failed!";
                     goto end;
@@ -722,12 +727,12 @@ void MainWindow::slotHideRectBtnClick()
     if (selectRectWidget->isVisible())
     {
        selectRectWidget->setVisible(false);
-       ui->hideRectButton->setText("æ˜¾ç¤º");
+       ui->hideRectButton->setText(QStringLiteral("ÏÔÊ¾"));
     }
     else
     {
        selectRectWidget->setVisible(true);
-       ui->hideRectButton->setText("éšè—");
+       ui->hideRectButton->setText(QStringLiteral("Òş²Ø"));
     }
 }
 
