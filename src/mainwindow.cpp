@@ -17,6 +17,20 @@
 
 #include <QFileDialog>
 
+///mingw使用QStringLiteral 会有问题
+/// 没有_MSC_VER这个宏 我们就认为他用的是mingw编译器
+
+#ifndef _MSC_VER
+#define MINGW
+#endif
+
+#if defined(WIN32) && !defined(MINGW)
+
+#else
+    #define QStringLiteral QString
+#endif
+
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
