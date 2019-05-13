@@ -21,7 +21,7 @@ public:
     explicit ScreenRecorder();
     ~ScreenRecorder();
 
-    void setFileName(char* str);
+    void setFileName(QString filePath);
 
     ErroCode init(QString videoDevName,bool useVideo,QString audioDevName,bool useAudio);
 

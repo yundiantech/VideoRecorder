@@ -17,6 +17,8 @@
 
 #include <QFileDialog>
 
+#include "AppConfig.h"
+
 ///mingw使用QStringLiteral 会有问题
 /// 没有_MSC_VER这个宏 我们就认为他用的是mingw编译器
 
@@ -41,27 +43,11 @@ MainWindow::MainWindow(QWidget *parent) :
     avformat_network_init();
     avdevice_register_all();
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
-        fprintf(stderr,"Could not initialize SDL - %s. \n", SDL_GetError());
-        exit(1);
-    }
-
     setWindowFlags(Qt::WindowStaysOnTopHint|Qt::FramelessWindowHint);  //使窗口的标题栏隐藏
     setAttribute(Qt::WA_TranslucentBackground, true);
 
-#if (QT_VERSION <= QT_VERSION_CHECK(5,0,0))
-    AppDataPath = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
-#else
-    AppDataPath = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);
-#endif
-
-    QString dirName = AppDataPath + "\\ScreenRecorder\\etc";
-    SettingFile = dirName + "\\set.conf";
-
-    dirName.replace("/","\\");
-
-    QDir dir;
-    dir.mkpath(dirName);
+    mSaveFileDir = AppConfig::AppFilePath_Video;
+    ui->lineEdit_filepath->setText(mSaveFileDir);
 
     connect(ui->startButton,SIGNAL(clicked()),this,SLOT(slotBtnClicked()));
     connect(ui->pauseButton,SIGNAL(clicked()),this,SLOT(slotBtnClicked()));
@@ -88,7 +74,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(selectRectWidget,SIGNAL(rectChanged(QRect)),this,SLOT(slotSelectRectFinished(QRect)));
 
     initDev();
-    loadFile();
+    loadConfigFile();
 
     connect(ui->toolButton_video,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
     connect(ui->toolButton_audio,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
@@ -169,26 +155,10 @@ void MainWindow::mouseReleaseEvent(QMouseEvent * event)
     event->accept();
 }
 
-void MainWindow::setSaveFile(QString fileName)
+void MainWindow::loadConfigFile()
 {
 
-    QString str = fileName;
-
-    saveFileName = str.replace("/","\\\\");
-
-    ui->lineEdit_filename->setText(saveFileName);
-    QString dirName = saveFileName.left(saveFileName.lastIndexOf("\\")-1);
-
-    QDir dir;
-    dir.mkpath(dirName);
-
-    saveFile();
-}
-
-void MainWindow::loadFile()
-{
-
-    QFile file(SettingFile);
+    QFile file(AppConfig::AppFilePath_EtcFile);
     if (file.open(QIODevice::ReadOnly))
     {
         QTextStream fileOut(&file);
@@ -240,17 +210,16 @@ void MainWindow::loadFile()
                     ui->comboBox_framerate->setCurrentIndex(rate-1);
                 }
             }
-            else if (str.contains("filename="))
+            else if (str.contains("savedir="))
             {
-                str = str.remove("filename=");
+                str = str.remove("savedir=");
                 str.replace("/","\\\\");
-                saveFileName = str;
-                ui->lineEdit_filename->setText(saveFileName);
+                mSaveFileDir = str;
 
-                QString dirName = saveFileName.left(saveFileName.lastIndexOf("\\")-1);
+                ui->lineEdit_filepath->setText(mSaveFileDir);
 
-                QDir dir;
-                dir.mkpath(dirName);
+                AppConfig::MakeDir(mSaveFileDir);
+
             }
         }
         file.close();
@@ -272,13 +241,9 @@ void MainWindow::loadFile()
     ui->startButton->setEnabled(true);
 }
 
-void MainWindow::saveFile()
+void MainWindow::saveConfigFile()
 {
-
-//    QDir dir(AppDataPath);
-//    dir.mkdir("etc");
-
-    QFile file(SettingFile);
+    QFile file(AppConfig::AppFilePath_EtcFile);
     if (file.open(QIODevice::WriteOnly))
     {
         QTextStream fileOut(&file);
@@ -297,7 +262,7 @@ void MainWindow::saveFile()
             modeStr = "mode=video";
         }
 
-        QString fileStr = QString("filename=%1").arg(saveFileName);
+        QString fileStr = QString("savedir=%1").arg(mSaveFileDir);
         QString rateStr = QString("framerate=%1").arg(ui->comboBox_framerate->currentText().toInt());
 
         fileOut<<areaStr;
@@ -317,7 +282,7 @@ void MainWindow::initDev()
 {
     QString videoDevName;
     QString audioDevName;
-    QFile devFile(SettingFile);
+    QFile devFile(AppConfig::AppFilePath_EtcFile);
     if (devFile.open(QIODevice::ReadOnly))
     {
         QTextStream fileOut(&devFile);
@@ -383,7 +348,7 @@ void MainWindow::initDev()
                 continue;
             }
 
-            if (str.contains("[dshow @"))
+            if (str.contains("[dshow @") && (!str.contains("Alternative name")) )
             {
                 int index = str.indexOf("\"");
                 str = str.remove(0,index);
@@ -399,7 +364,7 @@ void MainWindow::initDev()
                 else if (isAudioBegin)
                 {
                     if ("virtual-audio-capturer" != str)
-                    ui->comboBox_audio->addItem(str);
+                        ui->comboBox_audio->addItem(str);
                 }
             }
 
@@ -441,7 +406,7 @@ void MainWindow::slotBtnClicked()
     }
     else if (QObject::sender() == ui->pushButton_playBack)
     {
-        QString path = saveFileName;
+        QString path = mCurrentFilePath;
         path.replace("\\\\","/");
         path="file:///" + path;
         qDebug()<<QUrl(path)<<path;
@@ -477,17 +442,14 @@ void MainWindow::slotToolBtnToggled(bool isChecked)
     }
     else if (QObject::sender() == ui->toolButton_file)
     {
-        QString s = QFileDialog::getSaveFileName(
-                   this, QStringLiteral("选择保存文件的路径"),
-                       saveFileName,//初始目录
-                    QStringLiteral("视频文件 (*.mp4);;"));
+        QString s = QFileDialog::getExistingDirectory(
+                     NULL, "选择保存文件的路劲",
+                     mSaveFileDir);
+
          if (!s.isEmpty())
          {
-             saveFileName = s.replace("/","\\\\");
-
-             ui->lineEdit_filename->setText(saveFileName);
-
-             saveFile();
+//             mSaveFileDir = s.replace("/","\\\\");
+             ui->lineEdit_filepath->setText(mSaveFileDir);
          }
     }
 }
@@ -539,7 +501,7 @@ void MainWindow::slotSelectRectFinished(QRect re)
     ui->hideRectButton->setEnabled(true);
     ui->hideRectButton->setText(QStringLiteral("隐藏"));
 
-    saveFile();
+    saveConfigFile();
 
 }
 
@@ -571,85 +533,83 @@ bool MainWindow::startRecord()
             rect = deskRect;
         }
 
-        if (saveFileName.remove(" ").isEmpty())
+        ///保存配置文件
+        saveConfigFile();
+
+        QString audioDevName = ui->comboBox_audio->currentText();
+
+        if (audioDevName.isEmpty())
         {
-            ret = -2;
-            msg = "filepath not set";
-            QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("请先设置保存文件路径"));
+            QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("出错了,音频或视频设备未就绪，程序无法运行！"));
+
+            ret = -3;
+            msg = "audio device not set";
+            goto end;
         }
-        else
+
+        if (m_screenRecorder)
+            delete m_screenRecorder;
+
+        QDateTime dateTime = QDateTime::currentDateTime();
+        QString fileName = QString("video_%1.mp4").arg(dateTime.toString("yyyy-MM-dd hhmmss"));
+        mCurrentFilePath = QString("%1/%2").arg(mSaveFileDir).arg(fileName);
+
+
+        m_screenRecorder = new ScreenRecorder;
+        m_screenRecorder->setFileName(mCurrentFilePath);
+        m_screenRecorder->setVideoFrameRate(ui->comboBox_framerate->currentText().toInt());
+
+        if (ui->toolButton_video->isChecked())
         {
-            saveFile();
-
-            QString audioDevName = ui->comboBox_audio->currentText();
-
-            if (audioDevName.isEmpty())
+            if (m_screenRecorder->init("screen-capture-recorder",true,audioDevName,true) == SUCCEED)
             {
-                QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("出错了,音频或视频设备未就绪，程序无法运行！"));
-
-                ret = -3;
-                msg = "audio device not set";
-                goto end;
-            }
-
-            if (m_screenRecorder)
-                delete m_screenRecorder;
-
-            m_screenRecorder = new ScreenRecorder;
-            m_screenRecorder->setFileName(saveFileName.toLocal8Bit().data());
-            m_screenRecorder->setVideoFrameRate(ui->comboBox_framerate->currentText().toInt());
-
-            if (ui->toolButton_video->isChecked())
-            {
-                if (m_screenRecorder->init("screen-capture-recorder",true,audioDevName,true) == SUCCEED)
-                {
-                    m_screenRecorder->setPicRange(rect.x(),rect.y(),rect.width(),rect.height());
-                    m_screenRecorder->startRecord();
-                }
-                else
-                {
-                    QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("出错了,初始化录屏设备失败！"));
-
-                    ret = -4;
-                    msg = "init screen device failed!";
-                    goto end;
-
-                }
+                m_screenRecorder->setPicRange(rect.x(),rect.y(),rect.width(),rect.height());
+                m_screenRecorder->startRecord();
             }
             else
             {
-                if (m_screenRecorder->init("",false,audioDevName,true) == SUCCEED)
-                {
-//                    qDebug()<<rect;
-                    m_screenRecorder->setPicRange(rect.x(),rect.y(),rect.width(),rect.height());
-                    m_screenRecorder->startRecord();
-                }
-                else
-                {
-                    QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("出错了,初始化音频设备失败！"));
-                    ret = -5;
-                    msg = "init audio device failed!";
-                    goto end;
-                }
+                QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("出错了,初始化录屏设备失败！"));
+
+                ret = -4;
+                msg = "init screen device failed!";
+                goto end;
+
             }
-
-            ui->startButton->setEnabled(false);
-            ui->pauseButton->setEnabled(true);
-            ui->stopButton->setEnabled(true);
-
-            ui->selectRectButton->setEnabled(false);
-            ui->editRectButton->setEnabled(false);
-            //ui->hideRectButton->setEnabled(false);
-
-            ui->comboBox_audio->setEnabled(false);
-        //    ui->comboBox_recordeMode->setEnabled(false);
-
-            ui->toolButton_video->setEnabled(false);
-            ui->toolButton_audio->setEnabled(false);
-
-            m_recordeState = Recording;
-            m_timer->start();
         }
+        else
+        {
+            if (m_screenRecorder->init("",false,audioDevName,true) == SUCCEED)
+            {
+//                    qDebug()<<rect;
+                m_screenRecorder->setPicRange(rect.x(),rect.y(),rect.width(),rect.height());
+                m_screenRecorder->startRecord();
+            }
+            else
+            {
+                QMessageBox::critical(this, QStringLiteral("提示"), QStringLiteral("出错了,初始化音频设备失败！"));
+                ret = -5;
+                msg = "init audio device failed!";
+                goto end;
+            }
+        }
+
+        ui->startButton->setEnabled(false);
+        ui->pauseButton->setEnabled(true);
+        ui->stopButton->setEnabled(true);
+
+        ui->selectRectButton->setEnabled(false);
+        ui->editRectButton->setEnabled(false);
+        //ui->hideRectButton->setEnabled(false);
+
+        ui->comboBox_audio->setEnabled(false);
+    //    ui->comboBox_recordeMode->setEnabled(false);
+
+        ui->toolButton_video->setEnabled(false);
+        ui->toolButton_audio->setEnabled(false);
+
+        m_recordeState = Recording;
+        m_timer->start();
+
 
         ui->pushButton_playBack->setEnabled(false);
     }
@@ -756,6 +716,8 @@ void MainWindow::slotTimerTimeOut()
     if (m_screenRecorder)
     {
         audioPts = m_screenRecorder->getAudioPts();
+
+        audioPts /= 1000; //换算成秒
     }
 
     QString hStr = QString("00%1").arg(audioPts/3600);

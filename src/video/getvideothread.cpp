@@ -68,6 +68,8 @@ GetVideoThread::GetVideoThread()
 
     m_saveVideoFileThread = NULL;
 
+    audio_buf_size = 0;
+
     connect(this,SIGNAL(withChanged(int,int)),this,SLOT(slotWithChanged(int,int)),Qt::BlockingQueuedConnection);
     connect(this,SIGNAL(loading(bool)),this,SLOT(slotLoading(bool)),Qt::BlockingQueuedConnection);
 
@@ -148,10 +150,10 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
             return VideoDecoderOpenFailed;
         }
 
-        pFrame=avcodec_alloc_frame();
-        pFrameYUV=avcodec_alloc_frame();
-        out_buffer=(uint8_t *)av_malloc(avpicture_get_size(PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height));
-        avpicture_fill((AVPicture *)pFrameYUV, out_buffer, PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
+        pFrame    = av_frame_alloc();
+        pFrameYUV = av_frame_alloc();
+        out_buffer=(uint8_t *)av_malloc(avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height));
+        avpicture_fill((AVPicture *)pFrameYUV, out_buffer, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
 
         setPicRange(0,0,pCodecCtx->width, pCodecCtx->height);
     }
@@ -189,9 +191,9 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
         }
 
         qDebug()<<"audio info:";
-                qDebug()<<"audio info:"<<aCodecCtx->bit_rate<<aCodecCtx->sample_fmt<<aCodecCtx->bit_rate<<aCodecCtx->sample_rate<<aCodecCtx->channels;
+        qDebug()<<"audio info:"<<aCodecCtx->bit_rate<<aCodecCtx->sample_fmt<<aCodecCtx->bit_rate<<aCodecCtx->sample_rate<<aCodecCtx->channels;
 
-        aFrame=avcodec_alloc_frame();
+        aFrame = av_frame_alloc();
 
     }
 
@@ -228,6 +230,8 @@ void GetVideoThread::deInit()
         avcodec_close(pCodecCtx);
     if (aCodecCtx)
         avcodec_close(aCodecCtx);
+
+//    avformat_flush(pFormatCtx);
 
     avformat_close_input(&pFormatCtx);
 
@@ -278,6 +282,8 @@ void GetVideoThread::run()
     int yuvSize = 0;
     int size = 0;
 
+    audio_buf_size = 0;
+
     if (pCodecCtx)
     {
 
@@ -311,6 +317,7 @@ void GetVideoThread::run()
 
     while(m_isRun )
     {
+
         if (av_read_frame(pFormatCtx, packet)<0)
         {
             qDebug()<<"read failed!";
@@ -320,7 +327,7 @@ void GetVideoThread::run()
 
         if (m_pause)
         {
-            av_free_packet(packet);
+            av_packet_unref(packet);
             msleep(10);
             continue;
         }
@@ -355,7 +362,6 @@ void GetVideoThread::run()
 
             if(got_frame && pCodecCtx)
             {
-
                 sws_scale(img_convert_ctx, (const uint8_t* const*)pFrame->data, pFrame->linesize, 0, pCodecCtx->height, pFrameYUV->data, pFrameYUV->linesize);
 
                 if (m_saveVideoFileThread)
@@ -364,11 +370,12 @@ void GetVideoThread::run()
                     memcpy(picture_buf,pFrameYUV->data[0],y_size);
                     memcpy(picture_buf+y_size,pFrameYUV->data[1],y_size/4);
                     memcpy(picture_buf+y_size+y_size/4,pFrameYUV->data[2],y_size/4);
-                    uint8_t * yuv_buf = (uint8_t *)av_malloc(size);
+                    uint8_t * yuv_buf = (uint8_t *)malloc(size);
 
                     ///将YUV图像裁剪成目标大小
                     Yuv420Cut(pic_x,pic_y,pic_w,pic_h,pCodecCtx->width,pCodecCtx->height,picture_buf,yuv_buf);
                     m_saveVideoFileThread->videoDataQuene_Input(yuv_buf,yuvSize*3/2,time);
+
                     av_free(picture_buf);
                 }
             }
@@ -388,31 +395,42 @@ void GetVideoThread::run()
                 if (m_saveVideoFileThread)
                 {
                     int size = av_samples_get_buffer_size(NULL,aCodecCtx->channels, aFrame->nb_samples,aCodecCtx->sample_fmt, 1);
+
+                    memcpy(audio_buf + audio_buf_size, aFrame->data[0], size);
+                    audio_buf_size += size;
+
                     int index = 0;
-                    int ONEAudioSize = m_saveVideoFileThread->audio_input_frame_size * 4;//4096
-                    for (int i=0;i<(size/ONEAudioSize);i++)
+                    int ONEAudioSize = m_saveVideoFileThread->audio_input_frame_size;//4096
+
+                    int totalSize = audio_buf_size;
+                    int leftSize  = audio_buf_size;
+
+                    while(1)
                     {
-
-                        int framSize = ONEAudioSize;
-                        if (i==size/ONEAudioSize)
+                        if (leftSize >= ONEAudioSize)
                         {
-                            framSize = size%ONEAudioSize;
-                        }
+                            uint8_t * buffer = (uint8_t *)malloc(ONEAudioSize);
+                            memcpy(buffer, audio_buf+index, ONEAudioSize);
+                            m_saveVideoFileThread->audioDataQuene_Input((uint8_t*)buffer, ONEAudioSize);
 
-                        if (framSize<=0){
+                            index    += ONEAudioSize;
+                            leftSize -= ONEAudioSize;
+                        }
+                        else
+                        {
+                            if (leftSize > 0)
+                            {
+                                memcpy(audio_buf, audio_buf+index, leftSize);
+                            }
+                            audio_buf_size = leftSize;
                             break;
                         }
-
-                        uint8_t * audio_buf = (uint8_t *)malloc(4096*2);
-                        memcpy(audio_buf, aFrame->data[0]+index, framSize);
-                        m_saveVideoFileThread->audioDataQuene_Input((uint8_t*)audio_buf,ONEAudioSize);
-                        index += framSize;
                     }
                 }
             }
         }
 
-        av_free_packet(packet);
+        av_packet_unref(packet);
     }
 
     sws_freeContext(img_convert_ctx);

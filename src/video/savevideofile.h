@@ -1,10 +1,3 @@
-
-/**
- * 叶海辉
- * QQ群121376426
- * http://blog.yundiantech.com/
- */
-
 #ifndef SAVEVIDEOFILE_H
 #define SAVEVIDEOFILE_H
 
@@ -13,50 +6,77 @@
 #include <string.h>
 #include <math.h>
 
+#include <QThread>
+#include <QDebug>
+
+
 extern"C"
 {
-#include "libavutil/mathematics.h"
-#include "libavformat/avformat.h"
-#include "libswscale/swscale.h"
-
-
-#include "SDL.h"
-#include "SDL_thread.h"
-#include "SDL_events.h"
-
+    #include <libavutil/avassert.h>
+    #include <libavutil/channel_layout.h>
+    #include <libavutil/opt.h>
+    #include <libavutil/mathematics.h>
+    #include <libavutil/time.h>
+//    #include <libavutil/timestamp.h>
+    #include <libavformat/avformat.h>
+    #include <libswscale/swscale.h>
+    #include <libswresample/swresample.h>
+    #include <libavutil/imgutils.h>
 }
+
+#define AVCODEC_MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
+
+
+// a wrapper around a single output AVStream
+typedef struct OutputStream
+{
+    AVStream *st;
+    AVCodecContext *enc;
+
+    /* pts of the next frame that will be generated */
+    int64_t next_pts;
+    int samples_count;
+
+    AVFrame *frame;
+    AVFrame *tmp_frame;
+
+    /// 如果是视频这是yuv420p数据
+    /// 如果是音频这是存放pcm数据，用来取出刚好的一帧数据传给编码器编码
+    uint8_t *frameBuffer;
+    int frameBufferSize;
+
+    float t, tincr, tincr2;
+
+    struct SwsContext *sws_ctx;
+    struct SwrContext *swr_ctx;
+} OutputStream;
 
 struct BufferDataNode
 {
     uint8_t * buffer;
     int bufferSize;
-    long time;
+    int64_t time;
     BufferDataNode * next;
 };
 
-/**
- * @brief The SaveVideoFileThread class
- * 保存生成视频
- * 主要参考了 ffmpeg的output_example.c
- * output_example.c可以自行百度下载到
- */
-
-class SaveVideoFileThread
+class SaveVideoFileThread : public QThread
 {
+    Q_OBJECT
+
 public:
     explicit SaveVideoFileThread();
     ~SaveVideoFileThread();
 
-    void setFileName(char *str);
+    void setFileName(QString filePath);
 
     void setQuantity(int value);
     void setWidth(int width,int height);
+    bool startEncode();
+    bool stopEncode();
 
-    bool startWrite();
-    bool stopWrite();
-
-    void videoDataQuene_Input(uint8_t * buffer, int size, long time);
-    BufferDataNode *videoDataQuene_get(double time);
+    ///time是毫秒
+    void videoDataQuene_Input(uint8_t * buffer, int size, int64_t time);
+    BufferDataNode *videoDataQuene_get(int64_t time);
 
     void audioDataQuene_Input(uint8_t * buffer,int size);
     BufferDataNode *audioDataQuene_get();
@@ -68,29 +88,26 @@ public:
 
     void setVideoFrameRate(int value);
 
-    double getVideoPts();
-    double getAudioPts();
+    ///获取时间戳（毫秒）
+    int64_t getVideoPts();
+    int64_t getAudioPts();
 
+signals:
+    void sig_StartWriteFile(QString filePath);
+    void sig_StopWriteFile(QString filePath);
 
-//private:
+protected:
+    void run();
 
-    char filename[128];
+private:
+
+    QString mFilePath;
 
     int m_videoFrameRate;
 
-    uint8_t picture_buf[2000*2000*4]; //这个大小只要够存一帧h264就行，这里实际上不需要这么大
     bool isStop;
 
-    float t, tincr, tincr2;
-    int16_t *samples;
-    uint8_t *audio_outbuf;
-    int audio_outbuf_size;
-
-    AVFrame *picture, *tmp_picture;
-    uint8_t *video_outbuf;
-    int video_outbuf_size;
-
-    double audio_pts, video_pts;
+    int64_t audio_pts, video_pts; //时间（毫秒）
 
     int mBitRate; //video bitRate
 
@@ -100,11 +117,11 @@ public:
     bool m_containsVideo;
     bool m_containsAudio;
 
-    SDL_mutex *videoMutex;
+    QMutex mVideoMutex;
     BufferDataNode * videoDataQueneHead;
     BufferDataNode * videoDataQueneTail;
 
-    SDL_mutex *audioMutex;
+    QMutex mAudioMutex;
     BufferDataNode * AudioDataQueneHead;
     BufferDataNode * AudioDataQueneTail;
 
@@ -112,17 +129,17 @@ public:
     int videoBufferCount;
     int audioBufferCount;
 
-    void open_audio(AVFormatContext *oc, AVStream *st);
-    void close_audio(AVFormatContext *oc, AVStream *st);
+    void open_audio(AVFormatContext *oc, AVCodec *codec, OutputStream *ost);
+    void close_audio(AVFormatContext *oc, OutputStream *ost);
 
-    void open_video(AVFormatContext *oc, AVStream *st);
-    void close_video(AVFormatContext *oc, AVStream *st);
+    void open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost);
+    void close_video(AVFormatContext *oc, OutputStream *ost);
 
-    AVStream *add_video_stream(AVFormatContext *oc, AVCodecID codec_id);
-    AVStream *add_audio_stream(AVFormatContext *oc, AVCodecID codec_id);
+    void add_video_stream(OutputStream *ost, AVFormatContext *oc, AVCodec **codec, AVCodecID codec_id);
+    void add_audio_stream(OutputStream *ost, AVFormatContext *oc, AVCodec **codec, AVCodecID codec_id);
 
-    bool write_audio_frame(AVFormatContext *oc, AVStream *st);
-    bool write_video_frame(AVFormatContext *oc, AVStream *st, double time);
+    bool write_audio_frame(AVFormatContext *oc, OutputStream *ost);
+    bool write_video_frame(AVFormatContext *oc, OutputStream *ost, double time);
 
 };
 

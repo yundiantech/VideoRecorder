@@ -42,9 +42,6 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    /// 设置保存的视频文件的路径
-    void setSaveFile(QString fileName);
-
 public slots:
     void showOut();
 
@@ -64,10 +61,8 @@ private:
 
     QPropertyAnimation *animation; //动画类 用来实现窗体从上方慢慢出现
 
-    QString AppDataPath; //保存配置文件的目录
-    QString SettingFile; //保存配置文件的路径
-
-    QString saveFileName; //视频路径
+    QString mSaveFileDir; //视频保存目录
+    QString mCurrentFilePath; //当前录制的视频文件存放路径
 
     ScreenRecorder *m_screenRecorder;
     QRect deskRect; //可用桌面大小
@@ -81,10 +76,9 @@ private:
 
     void initDev(); //获取录音设备的列表
 
-    void loadFile(); //加载配置文件
-    void saveFile(); //写入配置文件
+    void loadConfigFile(); //加载配置文件
+    void saveConfigFile(); //写入配置文件
 
-//    QString m_erroMsg;
     bool startRecord();
     bool pauseRecord();
     bool stopRecord();

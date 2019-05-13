@@ -628,7 +628,7 @@ border-radius:1px;
            <string>录屏保存位置：</string>
           </property>
          </widget>
-         <widget class="QLineEdit" name="lineEdit_filename">
+         <widget class="QLineEdit" name="lineEdit_filepath">
           <property name="geometry">
            <rect>
             <x>10</x>

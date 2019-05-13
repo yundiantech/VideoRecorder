@@ -10,6 +10,8 @@
 
 #include <QTextCodec>
 
+#include "AppConfig.h"
+
 #undef main
 
 int main(int argc, char *argv[])
@@ -19,14 +21,9 @@ int main(int argc, char *argv[])
     QTextCodec *codec = QTextCodec::codecForName("GBK"); //获取系统编码
     QTextCodec::setCodecForLocale(codec);
 
-    MainWindow w;
+    AppConfig::InitAllDataPath();
 
-    //第二个参数为录制文件的路径
-    if (argc >= 2)
-    {
-        QString str = QString(argv[1]);
-        w.setSaveFile(str);
-    }
+    MainWindow w;
 
     return a.exec();
 }

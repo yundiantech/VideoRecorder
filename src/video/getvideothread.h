@@ -71,6 +71,10 @@ private:
 
     SaveVideoFileThread * m_saveVideoFileThread;
 
+    ///用于存储读取到的音频数据
+    DECLARE_ALIGNED(16, uint8_t, audio_buf) [AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
+    unsigned int audio_buf_size;
+
 };
 
 #endif // GetVideoThread_H

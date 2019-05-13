@@ -7,6 +7,8 @@
 
 #include "screenrecorder.h"
 
+#include "AppConfig.h"
+
 #include <QDateTime>
 #include <QDebug>
 
@@ -35,10 +37,10 @@ ScreenRecorder::~ScreenRecorder()
 
 }
 
-void ScreenRecorder::setFileName(char *str)
+void ScreenRecorder::setFileName(QString filePath)
 {
     if (m_saveVideoFileThread != NULL)
-        m_saveVideoFileThread->setFileName(str);
+        m_saveVideoFileThread->setFileName(filePath);
 }
 
 ErroCode ScreenRecorder::init(QString videoDevName, bool useVideo, QString audioDevName, bool useAudio)
@@ -79,7 +81,7 @@ ErroCode ScreenRecorder::init(QString videoDevName, bool useVideo, QString audio
 void ScreenRecorder::startRecord()
 {
     if (m_saveVideoFileThread != NULL)
-        m_saveVideoFileThread->startWrite();
+        m_saveVideoFileThread->startEncode();
 
     if (m_useVideo)
     {
@@ -129,7 +131,7 @@ void ScreenRecorder::stopRecord()
     {
         while(m_videoThread->isRunning())
         {
-            SDL_Delay(10);
+            AppConfig::mSleep(10);
         }
     }
 
@@ -142,12 +144,12 @@ void ScreenRecorder::stopRecord()
     {
         while(m_audioThread->isRunning())
         {
-            SDL_Delay(10);
+            AppConfig::mSleep(10);
         }
     }
 
     if (m_saveVideoFileThread != NULL)
-        m_saveVideoFileThread->stopWrite();
+        m_saveVideoFileThread->stopEncode();
 
 }
 
@@ -156,7 +158,7 @@ void ScreenRecorder::setPicRange(int x,int y,int w,int h)
     m_videoThread->setPicRange(x,y,w,h);
 
     if (m_saveVideoFileThread != NULL)
-    m_saveVideoFileThread->setWidth(w, h);
+        m_saveVideoFileThread->setWidth(w, h);
 
 }
 

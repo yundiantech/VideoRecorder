@@ -14,8 +14,14 @@ OBJECTS_DIR = obj/Obj
 
 
 #将输出文件直接放到源码目录下的bin目录下，将dll都放在了次目录中，用以解决运行后找不到dll的问
-#DESTDIR=$$OUT_PWD/bin/
-DESTDIR=$$PWD/bin/
+#DESTDIR=$$PWD/bin/
+contains(QT_ARCH, i386) {
+    message("32-bit")
+    DESTDIR = $${PWD}/bin32
+} else {
+    message("64-bit")
+    DESTDIR = $${PWD}/bin64
+}
 QMAKE_CXXFLAGS += -std=c++11
 
 
@@ -28,27 +34,36 @@ SOURCES += src/main.cpp\
     src/video/screenrecorder.cpp \
     src/widget/selectrect.cpp \
     src/widget/pushpoint.cpp \
-    src/video/getvideothread.cpp
+    src/video/getvideothread.cpp \
+    src/AppConfig.cpp
 
 HEADERS  += src/mainwindow.h \
     src/video/savevideofile.h \
     src/video/screenrecorder.h \
     src/widget/selectrect.h \
     src/widget/pushpoint.h \
-    src/video/getvideothread.h
+    src/video/getvideothread.h \
+    src/AppConfig.h
 
 FORMS    += src/mainwindow.ui
 
-INCLUDEPATH += $$PWD/lib/ffmpeg/include \
-               $$PWD/lib/SDL2/include \
-               $$PWD/src
 
-LIBS += $$PWD/lib/ffmpeg/lib/avcodec.lib \
-        $$PWD/lib/ffmpeg/lib/avdevice.lib \
-        $$PWD/lib/ffmpeg/lib/avfilter.lib \
-        $$PWD/lib/ffmpeg/lib/avformat.lib \
-        $$PWD/lib/ffmpeg/lib/avutil.lib \
-        $$PWD/lib/ffmpeg/lib/postproc.lib \
-        $$PWD/lib/ffmpeg/lib/swresample.lib \
-        $$PWD/lib/ffmpeg/lib/swscale.lib \
-        $$PWD/lib/SDL2/lib/x86/SDL2.lib
+win32{
+
+    contains(QT_ARCH, i386) {
+        message("32-bit")
+        INCLUDEPATH += $$PWD/lib/win32/ffmpeg/include \
+                       $$PWD/src
+
+        LIBS += -L$$PWD/lib/win32/ffmpeg/lib -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lpostproc -lswresample -lswscale
+
+    } else {
+        message("64-bit")
+        INCLUDEPATH += $$PWD/lib/win64/ffmpeg/include \
+                       $$PWD/src
+
+        LIBS += -L$$PWD/lib/win64/ffmpeg/lib -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lpostproc -lswresample -lswscale
+
+    }
+
+}
