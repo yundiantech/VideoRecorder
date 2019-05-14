@@ -370,8 +370,8 @@ void GetVideoThread::run()
                     memcpy(picture_buf,pFrameYUV->data[0],y_size);
                     memcpy(picture_buf+y_size,pFrameYUV->data[1],y_size/4);
                     memcpy(picture_buf+y_size+y_size/4,pFrameYUV->data[2],y_size/4);
-                    uint8_t * yuv_buf = (uint8_t *)malloc(size);
 
+                    uint8_t * yuv_buf = (uint8_t *)malloc(size);
                     ///将YUV图像裁剪成目标大小
                     Yuv420Cut(pic_x,pic_y,pic_w,pic_h,pCodecCtx->width,pCodecCtx->height,picture_buf,yuv_buf);
                     m_saveVideoFileThread->videoDataQuene_Input(yuv_buf,yuvSize*3/2,time);

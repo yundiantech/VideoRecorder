@@ -53,11 +53,7 @@ SaveVideoFileThread::SaveVideoFileThread()
     videoDataQueneHead = NULL;
     videoDataQueneTail = NULL;
 
-    AudioDataQueneHead = NULL;
-    AudioDataQueneTail = NULL;
-
     videoBufferCount = 0;
-    audioBufferCount = 0;
 
     m_videoFrameRate = 15;
 
@@ -206,60 +202,44 @@ BufferDataNode *SaveVideoFileThread::videoDataQuene_get(int64_t time)
     return node;
 }
 
-void SaveVideoFileThread::audioDataQuene_Input(uint8_t * buffer,int size)
+void SaveVideoFileThread::audioDataQuene_Input(const uint8_t *buffer, const int &size)
 {
-    BufferDataNode * node = (BufferDataNode*)malloc(sizeof(BufferDataNode));
+    BufferDataNode  node;
 //    node->buffer = buffer;
-    node->bufferSize = size;
-    node->next = NULL;
+    node.bufferSize = size;
+    node.next = NULL;
 
-    node->buffer = (uint8_t *)malloc(size);
-    memcpy(node->buffer,buffer,size);
+    node.buffer = (uint8_t*)buffer;
+//    node->buffer = (uint8_t *)malloc(size);
+//    memcpy(node->buffer,buffer,size);
 
     mAudioMutex.lock();
 
-    if (AudioDataQueneHead == NULL)
-    {
-        AudioDataQueneHead = node;
-    }
-    else
-    {
-        AudioDataQueneTail->next = node;
-    }
+    mAudioDataList.append(node);
 
-    AudioDataQueneTail = node;
-
-    audioBufferCount++;
 //qDebug()<<__FUNCTION__<<audioBufferCount<<size;
     mAudioMutex.unlock();
 
 }
 
-BufferDataNode *SaveVideoFileThread::audioDataQuene_get()
+bool SaveVideoFileThread::audioDataQuene_get(BufferDataNode &node)
 {
-    BufferDataNode * node = NULL;
+    bool isSucceed = false;
 
     mAudioMutex.lock();
 
-    if (AudioDataQueneHead != NULL)
+    if (!mAudioDataList.isEmpty())
     {
-        node = AudioDataQueneHead;
+        node = mAudioDataList.takeFirst();
 
-        if (AudioDataQueneTail == AudioDataQueneHead)
-        {
-            AudioDataQueneTail = NULL;
-        }
+        isSucceed = true;
 
-        AudioDataQueneHead = AudioDataQueneHead->next;
-
-        audioBufferCount--;
-
+//    qDebug()<<__FUNCTION__<<mAudioDataList.size();
     }
-//qDebug()<<__FUNCTION__<<audioBufferCount;
 
     mAudioMutex.unlock();
 
-    return node;
+    return isSucceed;
 }
 
 
@@ -475,22 +455,24 @@ bool SaveVideoFileThread::write_audio_frame(AVFormatContext *oc, OutputStream *o
     c = ost->enc;
 
 #if 1
-    BufferDataNode *node = audioDataQuene_get();
 
-    if (node == NULL)
+    BufferDataNode node;
+
+    if (audioDataQuene_get(node))
+    {
+        frame = ost->frame;
+    //        memset(frame->data[0], 0x0, frame->nb_samples);
+        memcpy(frame->data[0], node.buffer, frame->nb_samples);
+    //            memcpy(frame->data[0], node.buffer, node.bufferSize);
+        free(node.buffer);
+
+        frame->pts = ost->next_pts;
+        ost->next_pts  += frame->nb_samples;
+    }
+    else
     {
         return false;
     }
-
-    frame = ost->frame;
-//        memset(frame->data[0], 0x0, frame->nb_samples);
-    memcpy(frame->data[0], node->buffer, frame->nb_samples);
-//            memcpy(frame->data[0], node->buffer, node->bufferSize);
-    free(node->buffer);
-    free(node);
-
-    frame->pts = ost->next_pts;
-    ost->next_pts  += frame->nb_samples;
 
 #else
     frame = get_audio_frame(ost); //自动生成音频数据
@@ -499,10 +481,10 @@ bool SaveVideoFileThread::write_audio_frame(AVFormatContext *oc, OutputStream *o
     if (frame)
     {
         /* convert samples from native format to destination codec format, using the resampler */
-            /* compute destination number of samples */
-            dst_nb_samples = av_rescale_rnd(swr_get_delay(ost->swr_ctx, c->sample_rate) + frame->nb_samples,
-                                            c->sample_rate, c->sample_rate, AV_ROUND_UP);
-            av_assert0(dst_nb_samples == frame->nb_samples);
+        /* compute destination number of samples */
+        dst_nb_samples = av_rescale_rnd(swr_get_delay(ost->swr_ctx, c->sample_rate) + frame->nb_samples,
+                                        c->sample_rate, c->sample_rate, AV_ROUND_UP);
+        av_assert0(dst_nb_samples == frame->nb_samples);
 
 //        /* when we pass a frame to the encoder, it may keep a reference to it
 //         * internally;

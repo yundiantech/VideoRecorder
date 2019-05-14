@@ -78,8 +78,8 @@ public:
     void videoDataQuene_Input(uint8_t * buffer, int size, int64_t time);
     BufferDataNode *videoDataQuene_get(int64_t time);
 
-    void audioDataQuene_Input(uint8_t * buffer,int size);
-    BufferDataNode *audioDataQuene_get();
+    void audioDataQuene_Input(const uint8_t * buffer,const int &size);
+    bool audioDataQuene_get(BufferDataNode &node);
 
     int audio_input_frame_size;
 
@@ -122,12 +122,10 @@ private:
     BufferDataNode * videoDataQueneTail;
 
     QMutex mAudioMutex;
-    BufferDataNode * AudioDataQueneHead;
-    BufferDataNode * AudioDataQueneTail;
+    QList<BufferDataNode> mAudioDataList;
 
     BufferDataNode * lastVideoNode; //上一次的帧（帧不足的时候用上一次的帧来补全）
     int videoBufferCount;
-    int audioBufferCount;
 
     void open_audio(AVFormatContext *oc, AVCodec *codec, OutputStream *ost);
     void close_audio(AVFormatContext *oc, OutputStream *ost);
