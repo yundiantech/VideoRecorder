@@ -245,7 +245,6 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
             {
                 in_ch_layout = AV_CH_LAYOUT_MONO;
             }
-            in_ch_layout = AV_CH_LAYOUT_STEREO;//av_get_default_channel_layout(aCodecCtx->channels);
         }
 //qDebug()<<"1111:"<<in_sample_fmt<<in_sample_rate<<in_ch_layout<<aCodecCtx->channels<<out_sample_fmt<<out_sample_rate<<out_ch_layout<<audio_tgt_channels;
         swrCtx = swr_alloc_set_opts(nullptr, out_ch_layout, out_sample_fmt, out_sample_rate,
