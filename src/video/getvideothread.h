@@ -56,10 +56,31 @@ private:
 
     AVFormatContext	*pFormatCtx;
     int				i, videoindex ,audioindex;
-    AVCodecContext	*pCodecCtx,*aCodecCtx;
 
-    AVFrame	*pFrame,*aFrame,*pFrameYUV;
+    ///视频相关
+    AVCodecContext *pCodecCtx;
+    AVCodec *pCodec;
+    AVFrame	*pFrame,*pFrameYUV;
     uint8_t *out_buffer;
+
+    ///音频相关
+    AVCodecContext *aCodecCtx;
+    AVCodec *aCodec;
+    AVFrame *aFrame;
+
+    ///以下变量用于音频重采样
+    /// 由于新版ffmpeg编码aac只支持AV_SAMPLE_FMT_FLTP，因此采集到音频数据后直接进行重采样
+    /// 重采样成44100的32 bits 双声道数据(AV_SAMPLE_FMT_FLTP)
+    AVFrame *aFrame_ReSample;
+    SwrContext *swrCtx;
+
+    enum AVSampleFormat in_sample_fmt; //输入的采样格式
+    enum AVSampleFormat out_sample_fmt;//输出的采样格式 16bit PCM
+    int in_sample_rate;//输入的采样率
+    int out_sample_rate;//输出的采样率
+    int audio_tgt_channels; ///av_get_channel_layout_nb_channels(out_ch_layout);
+    DECLARE_ALIGNED(16, uint8_t, audio_buf_resample) [AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
+
 
     int pic_x;
     int pic_y;

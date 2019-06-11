@@ -160,15 +160,19 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
 
     audioindex = -1;
     aCodecCtx = NULL;
+
     if (useAudio)
     {
 
         for(i=0; i<pFormatCtx->nb_streams; i++)
+        {
             if(pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
             {
                 audioindex=i;
                 break;
             }
+        }
+
         if(audioindex==-1)
         {
             printf("Didn't find a video stream.（没有找到视频流）\n");
@@ -195,6 +199,71 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
 
         aFrame = av_frame_alloc();
 
+        //重采样设置选项-----------------------------------------------------------start
+        aFrame_ReSample = nullptr;
+
+        //frame->16bit 44100 PCM 统一音频采样格式与采样率
+        swrCtx = nullptr;
+
+        //输入的声道布局
+        int in_ch_layout;
+
+        //输出的声道布局
+        int out_ch_layout = av_get_default_channel_layout(audio_tgt_channels); ///AV_CH_LAYOUT_STEREO
+
+        out_ch_layout &= ~AV_CH_LAYOUT_STEREO;
+
+        /// 这里音频播放使用了固定的参数
+        /// 强制将音频重采样成44100 双声道  AV_SAMPLE_FMT_S16
+        /// SDL播放中也是用了同样的播放参数
+        //重采样设置选项----------------
+        //输入的采样格式
+        in_sample_fmt = aCodecCtx->sample_fmt;
+        //输出的采样格式 32bit PCM
+        out_sample_fmt = AV_SAMPLE_FMT_FLTP;
+        //输入的采样率
+        in_sample_rate = aCodecCtx->sample_rate;
+        //输入的声道布局
+        in_ch_layout = aCodecCtx->channel_layout;
+
+        //输出的采样率
+        out_sample_rate = 44100;
+        //输出的声道布局
+
+        out_ch_layout = AV_CH_LAYOUT_STEREO;
+
+        audio_tgt_channels = av_get_channel_layout_nb_channels(out_ch_layout);
+        out_ch_layout = av_get_default_channel_layout(audio_tgt_channels); ///AV_CH_LAYOUT_STEREO
+
+        if (in_ch_layout <= 0)
+        {
+            if (aCodecCtx->channels == 2)
+            {
+                in_ch_layout = AV_CH_LAYOUT_STEREO;
+            }
+            else
+            {
+                in_ch_layout = AV_CH_LAYOUT_MONO;
+            }
+            in_ch_layout = AV_CH_LAYOUT_STEREO;//av_get_default_channel_layout(aCodecCtx->channels);
+        }
+//qDebug()<<"1111:"<<in_sample_fmt<<in_sample_rate<<in_ch_layout<<aCodecCtx->channels<<out_sample_fmt<<out_sample_rate<<out_ch_layout<<audio_tgt_channels;
+        swrCtx = swr_alloc_set_opts(nullptr, out_ch_layout, out_sample_fmt, out_sample_rate,
+                                             in_ch_layout, in_sample_fmt, in_sample_rate, 0, nullptr);
+
+        /** Open the resampler with the specified parameters. */
+        int ret = swr_init(swrCtx);
+        if (ret < 0)
+        {
+            char buff[128]={0};
+            av_strerror(ret, buff, 128);
+
+            printf("Could not open resample context %s\n", buff);
+            swr_free(&swrCtx);
+            swrCtx = nullptr;
+
+            return AudioDecoderOpenFailed;
+        }
     }
 
     return SUCCEED;
@@ -392,15 +461,30 @@ void GetVideoThread::run()
 
             if (got_frame)
             {
+                /// 这里重采样成44100 双声道 AV_SAMPLE_FMT_FLTP
+                if (aFrame_ReSample == nullptr)
+                {
+                    aFrame_ReSample = av_frame_alloc();
+
+                    aFrame_ReSample->nb_samples = av_rescale_rnd(swr_get_delay(swrCtx, out_sample_rate) + aFrame->nb_samples,
+                                out_sample_rate, in_sample_rate, AV_ROUND_UP);
+
+                    av_samples_fill_arrays(aFrame_ReSample->data, aFrame_ReSample->linesize, audio_buf_resample, audio_tgt_channels, aFrame_ReSample->nb_samples, out_sample_fmt, 0);
+
+                }
+
+                int len2 = swr_convert(swrCtx, aFrame_ReSample->data, aFrame_ReSample->nb_samples, (const uint8_t**)aFrame->data, aFrame->nb_samples);
+                int resampled_data_size = len2 * audio_tgt_channels * av_get_bytes_per_sample(out_sample_fmt);
+
+//qDebug()<<"audio info:"<<aCodecCtx->bit_rate<<aCodecCtx->sample_fmt<<aCodecCtx->sample_rate<<aCodecCtx->channels<<audio_tgt_channels;
+
                 if (m_saveVideoFileThread)
                 {
-                    int size = av_samples_get_buffer_size(NULL,aCodecCtx->channels, aFrame->nb_samples,aCodecCtx->sample_fmt, 1);
-
-                    memcpy(audio_buf + audio_buf_size, aFrame->data[0], size);
-                    audio_buf_size += size;
+                    memcpy(audio_buf + audio_buf_size, audio_buf_resample, resampled_data_size);
+                    audio_buf_size += resampled_data_size;
 
                     int index = 0;
-                    int ONEAudioSize = m_saveVideoFileThread->audio_input_frame_size;//4096
+                    int ONEAudioSize = m_saveVideoFileThread->getONEFrameSize();
 
                     int totalSize = audio_buf_size;
                     int leftSize  = audio_buf_size;
@@ -428,6 +512,45 @@ void GetVideoThread::run()
                     }
                 }
             }
+
+//            if (got_frame)
+//            {
+//                if (m_saveVideoFileThread)
+//                {
+//                    int size = av_samples_get_buffer_size(NULL,aCodecCtx->channels, aFrame->nb_samples,aCodecCtx->sample_fmt, 1);
+
+//                    memcpy(audio_buf + audio_buf_size, aFrame->data[0], size);
+//                    audio_buf_size += size;
+
+//                    int index = 0;
+//                    int ONEAudioSize = m_saveVideoFileThread->audio_input_frame_size;//4096
+
+//                    int totalSize = audio_buf_size;
+//                    int leftSize  = audio_buf_size;
+
+//                    while(1)
+//                    {
+//                        if (leftSize >= ONEAudioSize)
+//                        {
+//                            uint8_t * buffer = (uint8_t *)malloc(ONEAudioSize);
+//                            memcpy(buffer, audio_buf+index, ONEAudioSize);
+//                            m_saveVideoFileThread->audioDataQuene_Input((uint8_t*)buffer, ONEAudioSize);
+
+//                            index    += ONEAudioSize;
+//                            leftSize -= ONEAudioSize;
+//                        }
+//                        else
+//                        {
+//                            if (leftSize > 0)
+//                            {
+//                                memcpy(audio_buf, audio_buf+index, leftSize);
+//                            }
+//                            audio_buf_size = leftSize;
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
         }
 
         av_packet_unref(packet);

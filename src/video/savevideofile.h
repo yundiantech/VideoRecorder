@@ -45,10 +45,6 @@ typedef struct OutputStream
     uint8_t *frameBuffer;
     int frameBufferSize;
 
-    float t, tincr, tincr2;
-
-    struct SwsContext *sws_ctx;
-    struct SwrContext *swr_ctx;
 } OutputStream;
 
 struct BufferDataNode
@@ -81,7 +77,7 @@ public:
     void audioDataQuene_Input(const uint8_t * buffer,const int &size);
     bool audioDataQuene_get(BufferDataNode &node);
 
-    int audio_input_frame_size;
+    int getONEFrameSize(){return mONEFrameSize;}
 
     void setContainsVideo(bool);
     void setContainsAudio(bool);
@@ -110,6 +106,8 @@ private:
     int64_t audio_pts, video_pts; // ±º‰£®∫¡√Î£©
 
     int mBitRate; //video bitRate
+
+    int mONEFrameSize;
 
     int WIDTH;
     int HEIGHT;
