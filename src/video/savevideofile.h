@@ -7,8 +7,8 @@
 #include <math.h>
 
 #include <QThread>
+#include <QMutex>
 #include <QDebug>
-
 
 extern"C"
 {
