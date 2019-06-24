@@ -209,11 +209,6 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
         //输入的声道布局
         int in_ch_layout;
 
-        //输出的声道布局
-        int out_ch_layout = av_get_default_channel_layout(audio_tgt_channels); ///AV_CH_LAYOUT_STEREO
-
-        out_ch_layout &= ~AV_CH_LAYOUT_STEREO;
-
         /// 新版ffmpeg编码aac只支持输入AV_SAMPLE_FMT_FLTP的数据
         /// 强制将音频重采样成44100 双声道  AV_SAMPLE_FMT_FLTP
         //重采样设置选项----------------
@@ -230,10 +225,13 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
         out_sample_rate = 44100;
         //输出的声道布局
 
+        //输出的声道布局
         out_ch_layout = AV_CH_LAYOUT_STEREO;
-
         audio_tgt_channels = av_get_channel_layout_nb_channels(out_ch_layout);
-        out_ch_layout = av_get_default_channel_layout(audio_tgt_channels); ///AV_CH_LAYOUT_STEREO
+
+//        //输出的声道布局
+//        out_ch_layout = av_get_default_channel_layout(audio_tgt_channels); ///AV_CH_LAYOUT_STEREO
+//        out_ch_layout &= ~AV_CH_LAYOUT_STEREO;
 
         if (in_ch_layout <= 0)
         {
@@ -467,10 +465,21 @@ void GetVideoThread::run()
                 {
                     aFrame_ReSample = av_frame_alloc();
 
-                    aFrame_ReSample->nb_samples = av_rescale_rnd(swr_get_delay(swrCtx, out_sample_rate) + aFrame->nb_samples,
-                                out_sample_rate, in_sample_rate, AV_ROUND_UP);
+                    int nb_samples = av_rescale_rnd(swr_get_delay(swrCtx, out_sample_rate) + aFrame->nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
 
-                    av_samples_fill_arrays(aFrame_ReSample->data, aFrame_ReSample->linesize, audio_buf_resample, audio_tgt_channels, aFrame_ReSample->nb_samples, out_sample_fmt, 0);
+//                    av_samples_fill_arrays(aFrame_ReSample->data, aFrame_ReSample->linesize, audio_buf_resample, audio_tgt_channels, aFrame_ReSample->nb_samples, out_sample_fmt, 0);
+
+                    aFrame_ReSample->format = out_sample_fmt;
+                    aFrame_ReSample->channel_layout = out_ch_layout;
+                    aFrame_ReSample->sample_rate = out_sample_rate;
+                    aFrame_ReSample->nb_samples = nb_samples;
+
+                    ret = av_frame_get_buffer(aFrame_ReSample, 0);
+                    if (ret < 0)
+                    {
+                        fprintf(stderr, "Error allocating an audio buffer\n");
+                        exit(1);
+                    }
 
                 }
 
