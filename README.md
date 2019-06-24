@@ -51,7 +51,7 @@ Qt5.6.2(vs2013) + ffmpeg4.1
 
 【V2.0.1】 2019-06.24  
 Qt5.6.2(vs2013) + ffmpeg4.1  
-1.解决平面PCM数据处理不当导致声音不正常的问题
+1.解决平面PCM数据处理不当导致声音不正常的问题  
 修改内容解释如下：  
 ![Image text](https://raw.githubusercontent.com/yundiantech/VideoRecorder/master/pic/code_1.jpg)
 
