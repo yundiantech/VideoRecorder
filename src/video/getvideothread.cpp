@@ -520,8 +520,9 @@ void GetVideoThread::run()
 
                     ONEAudioSize /= audio_tgt_channels;
 
+                    ///由于采集到的数据很大，而编码器一次只需要很少的数据。
+                    ///因此将采集到的数据分成多次传给编码器。
                     /// 由于平面模式的pcm存储方式为：LLLLLLLLLLLLLLLLLLLLLRRRRRRRRRRRRRRRRRRRRR，因此这里合并完传给编码器就行了
-
                     while(1)
                     {
                         if (leftSize >= ONEAudioSize)
