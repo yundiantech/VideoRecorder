@@ -68,7 +68,8 @@ GetVideoThread::GetVideoThread()
 
     m_saveVideoFileThread = NULL;
 
-    audio_buf_size = 0;
+    audio_buf_size_L = 0;
+    audio_buf_size_R = 0;
 
     connect(this,SIGNAL(withChanged(int,int)),this,SLOT(slotWithChanged(int,int)),Qt::BlockingQueuedConnection);
     connect(this,SIGNAL(loading(bool)),this,SLOT(slotLoading(bool)),Qt::BlockingQueuedConnection);
@@ -213,9 +214,8 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
 
         out_ch_layout &= ~AV_CH_LAYOUT_STEREO;
 
-        /// 这里音频播放使用了固定的参数
-        /// 强制将音频重采样成44100 双声道  AV_SAMPLE_FMT_S16
-        /// SDL播放中也是用了同样的播放参数
+        /// 新版ffmpeg编码aac只支持输入AV_SAMPLE_FMT_FLTP的数据
+        /// 强制将音频重采样成44100 双声道  AV_SAMPLE_FMT_FLTP
         //重采样设置选项----------------
         //输入的采样格式
         in_sample_fmt = aCodecCtx->sample_fmt;
@@ -246,6 +246,7 @@ ErroCode GetVideoThread::init(QString videoDevName, bool useVideo, QString audio
                 in_ch_layout = AV_CH_LAYOUT_MONO;
             }
         }
+
 //qDebug()<<"1111:"<<in_sample_fmt<<in_sample_rate<<in_ch_layout<<aCodecCtx->channels<<out_sample_fmt<<out_sample_rate<<out_ch_layout<<audio_tgt_channels;
         swrCtx = swr_alloc_set_opts(nullptr, out_ch_layout, out_sample_fmt, out_sample_rate,
                                              in_ch_layout, in_sample_fmt, in_sample_rate, 0, nullptr);
@@ -350,7 +351,8 @@ void GetVideoThread::run()
     int yuvSize = 0;
     int size = 0;
 
-    audio_buf_size = 0;
+    audio_buf_size_L = 0;
+    audio_buf_size_R = 0;
 
     if (pCodecCtx)
     {
@@ -473,28 +475,57 @@ void GetVideoThread::run()
                 }
 
                 int len2 = swr_convert(swrCtx, aFrame_ReSample->data, aFrame_ReSample->nb_samples, (const uint8_t**)aFrame->data, aFrame->nb_samples);
+
+///下面这两种方法计算的大小是一样的
+#if 0
                 int resampled_data_size = len2 * audio_tgt_channels * av_get_bytes_per_sample(out_sample_fmt);
+#else
+                int resampled_data_size = av_samples_get_buffer_size(NULL, audio_tgt_channels, aFrame_ReSample->nb_samples, out_sample_fmt, 1);
+#endif
+
+                int OneChannelDataSize = resampled_data_size / audio_tgt_channels;
 
 //qDebug()<<"audio info:"<<aCodecCtx->bit_rate<<aCodecCtx->sample_fmt<<aCodecCtx->sample_rate<<aCodecCtx->channels<<audio_tgt_channels;
-
+//static FILE *fp1 = fopen("out-L.pcm", "wb");
+//fwrite(aFrame_ReSample->data[0], 1, resampled_data_size / 2, fp1);
+//if (audio_tgt_channels >= 2)
+//{
+//    static FILE *fp2 = fopen("out-R.pcm", "wb");
+//    fwrite(aFrame_ReSample->data[1], 1, resampled_data_size / 2, fp2);
+//}
                 if (m_saveVideoFileThread)
                 {
-                    memcpy(audio_buf + audio_buf_size, audio_buf_resample, resampled_data_size);
-                    audio_buf_size += resampled_data_size;
+                    memcpy(audio_buf_L + audio_buf_size_L, aFrame_ReSample->data[0], OneChannelDataSize);
+                    audio_buf_size_L += OneChannelDataSize;
+
+                    if (audio_tgt_channels >= 2)
+                    {
+                        memcpy(audio_buf_R + audio_buf_size_R, aFrame_ReSample->data[1], OneChannelDataSize);
+                        audio_buf_size_R += OneChannelDataSize;
+                    }
 
                     int index = 0;
                     int ONEAudioSize = m_saveVideoFileThread->getONEFrameSize();
 
-                    int totalSize = audio_buf_size;
-                    int leftSize  = audio_buf_size;
+                    int leftSize  = audio_buf_size_L;
+
+                    ONEAudioSize /= audio_tgt_channels;
+
+                    /// 由于平面模式的pcm存储方式为：LLLLLLLLLLLLLLLLLLLLLRRRRRRRRRRRRRRRRRRRRR，因此这里合并完传给编码器就行了
 
                     while(1)
                     {
                         if (leftSize >= ONEAudioSize)
                         {
-                            uint8_t * buffer = (uint8_t *)malloc(ONEAudioSize);
-                            memcpy(buffer, audio_buf+index, ONEAudioSize);
-                            m_saveVideoFileThread->audioDataQuene_Input((uint8_t*)buffer, ONEAudioSize);
+                            uint8_t * buffer = (uint8_t *)malloc(ONEAudioSize * audio_tgt_channels);
+                            memcpy(buffer, audio_buf_L+index, ONEAudioSize);
+
+                            if (audio_tgt_channels >= 2)
+                            {
+                                memcpy(buffer+ONEAudioSize, audio_buf_R+index, ONEAudioSize);
+                            }
+
+                            m_saveVideoFileThread->audioDataQuene_Input((uint8_t*)buffer, ONEAudioSize * audio_tgt_channels);
 
                             index    += ONEAudioSize;
                             leftSize -= ONEAudioSize;
@@ -503,9 +534,11 @@ void GetVideoThread::run()
                         {
                             if (leftSize > 0)
                             {
-                                memcpy(audio_buf, audio_buf+index, leftSize);
+                                memcpy(audio_buf_L, audio_buf_L+index, leftSize);
+                                memcpy(audio_buf_R, audio_buf_R+index, leftSize);
                             }
-                            audio_buf_size = leftSize;
+                            audio_buf_size_L = leftSize;
+                            audio_buf_size_R = leftSize;
                             break;
                         }
                     }
