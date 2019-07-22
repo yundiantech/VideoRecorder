@@ -55,4 +55,9 @@ Qt5.6.2(vs2013) + ffmpeg4.1
 修改内容解释如下：  
 ![Image text](https://raw.githubusercontent.com/yundiantech/VideoRecorder/master/pic/code_1.jpg)
 
+【V2.0.2】 2019-07.22  
+Qt5.6.2(vs2013) + ffmpeg4.1  
+1.解决windows自带播放器不能播放的问题  
+2.修改文件地址为rtmp地址后即可实现推流
+
 
