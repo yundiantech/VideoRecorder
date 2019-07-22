@@ -706,6 +706,7 @@ void SaveVideoFileThread::open_video(AVFormatContext *oc, AVCodec *codec, Output
     av_dict_set(&param, "tune", "zerolatency", 0);  //实现实时编码
 
     c->thread_count = 16;
+    c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
 qDebug()<<__FUNCTION__<<"333";
     int ret = 0;
