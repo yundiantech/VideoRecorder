@@ -1,743 +1,573 @@
-
-/**
- * “∂∫£ª‘
- * QQ»∫121376426
+Ôªø/**
+ * Âè∂Êµ∑Ëæâ
+ * QQÁæ§121376426
  * http://blog.yundiantech.com/
  */
 
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
+#include "MainWindow.h"
+#include "ui_MainWindow.h"
 
-#include <QUrl>
-#include <QTimer>
-#include <QProcess>
 #include <QMessageBox>
-#include <QDesktopWidget>
-#include <QDesktopServices>
-
 #include <QFileDialog>
+#include <QDesktopServices>
+#include <QUuid>
+#include <QDesktopWidget>
+#include <QAudioDeviceInfo>
+#include <QDebug>
+#include <QColorDialog>
+#include <QSharedMemory>
+
+#include <QWindow>
+#include <QScreen>
+#include <QJsonObject>
+#include <QJsonDocument>
+
+#include <QProcess>
+#include <QTextCodec>
+
+#include <QSslConfiguration>
+
+#if defined(WIN32)
+    #include <WinSock2.h>
+    #include <Windows.h>
+#else
+
+#endif
 
 #include "AppConfig.h"
+#include "Base/FunctionTransfer.h"
+#include "Base64/Base64.h"
 
-///mingw π”√QStringLiteral ª·”–Œ Ã‚
-/// √ª”–_MSC_VER’‚∏ˆ∫Í Œ“√«æÕ»œŒ™À˚”√µƒ «mingw±‡“Î∆˜
+#include "Widget/mymessagebox_withTitle.h"
 
-#ifndef _MSC_VER
-#define MINGW
-#endif
-
-#if defined(WIN32) && !defined(MINGW)
-
-#else
-    #define QStringLiteral QString
-#endif
-
+#include "ShareMemery/ShareMemery.h"
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
+    QWidget(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
-    av_register_all();
-    avformat_network_init();
-    avdevice_register_all();
+    FunctionTransfer::init();
 
-    setWindowFlags(Qt::WindowStaysOnTopHint|Qt::FramelessWindowHint);  // π¥∞ø⁄µƒ±ÍÃ‚¿∏“˛≤ÿ
-    setAttribute(Qt::WA_TranslucentBackground, true);
+    AppConfig::gMainWindow = this;
 
-    mSaveFileDir = AppConfig::AppFilePath_Video;
-    ui->lineEdit_filepath->setText(mSaveFileDir);
+    this->setAttribute(Qt::WA_TranslucentBackground, true);
+    setWindowFlags(Qt::WindowStaysOnTopHint|Qt::FramelessWindowHint|Qt::Tool|Qt::X11BypassWindowManagerHint); //‰ΩøÁ™óÂè£ÁΩÆÈ°∂
+//    setWindowFlags(Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint); //‰ΩøÁ™óÂè£Ê†áÈ¢òÊ†èÈöêËóè
 
-    connect(ui->startButton,SIGNAL(clicked()),this,SLOT(slotBtnClicked()));
-    connect(ui->pauseButton,SIGNAL(clicked()),this,SLOT(slotBtnClicked()));
-    connect(ui->stopButton,SIGNAL(clicked()),this,SLOT(slotBtnClicked()));
-    connect(ui->pushButton_playBack,SIGNAL(clicked()),this,SLOT(slotBtnClicked()));
+    ui->label_erro_tips_10000->hide();
 
-    connect(ui->selectRectButton,SIGNAL(clicked()),this,SLOT(slotSelectRectBtnClick()));
-    connect(ui->editRectButton,SIGNAL(clicked()),this,SLOT(slotEditRectBtnClick()));
-    connect(ui->hideRectButton,SIGNAL(clicked()),this,SLOT(slotHideRectBtnClick()));
+    ///Á≥ªÁªüÊâòÁõò
+    mPopMenu    = new QMenu;
+    mQuitAction = new QAction(QIcon("images/open.png"), QStringLiteral("ÈÄÄÂá∫"), this);
 
-    m_screenRecorder = NULL;
-    isLeftBtnPressed = false;
-    m_recordeState = Stop;
-
-    rect = QRect(0,0,0,0);
-
-    selectRectWidget = new SelectRect(NULL,SelectRect::RecordGif);
-    QDesktopWidget* desktopWidget = QApplication::desktop();
-    deskRect = desktopWidget->screenGeometry();//ªÒ»°ø…”√◊¿√Ê¥Û–°
-    m_rate = deskRect.height() * 1.0 / deskRect.width();
-    selectRectWidget->setRate(m_rate);
-
-    connect(selectRectWidget,SIGNAL(finished(QRect)),this,SLOT(slotSelectRectFinished(QRect)));
-    connect(selectRectWidget,SIGNAL(rectChanged(QRect)),this,SLOT(slotSelectRectFinished(QRect)));
-
-    initDev();
-    loadConfigFile();
-
-    connect(ui->toolButton_video,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
-    connect(ui->toolButton_audio,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
-    connect(ui->toolButton_file,SIGNAL(clicked(bool)),this,SLOT(slotToolBtnToggled(bool)));
-
-    ///∂Øª≠¿‡ ”√¿¥ µœ÷¥∞ÃÂ¥”…œ∑Ω¬˝¬˝≥ˆœ÷
-    animation = new QPropertyAnimation(this, "geometry");
-    animation->setDuration(1000);
-
-    ui->toolButton_setting->setChecked(false);
-    ui->widget_extern->hide();
-    QTimer::singleShot(50,this,SLOT(showOut()));
-
-    m_timer = new QTimer;
-    connect(m_timer,SIGNAL(timeout()),this,SLOT(slotTimerTimeOut()));
-    m_timer->setInterval(500);
-
-    connect(ui->checkBox,SIGNAL(clicked(bool)),this,SLOT(slotCheckBoxClick(bool)));
-
-    if (ui->toolButton_video->isChecked())
+    connect(mQuitAction, &QAction::triggered, [=](bool isChecked)
     {
-        selectRectWidget->show();
-        selectRectWidget->setPointHide();
-        ui->hideRectButton->setText(QStringLiteral("“˛≤ÿ"));
+        int ret = MyMessageBox_WithTitle::showWarningText(QStringLiteral("Ë≠¶Âëä"),
+                                                           QStringLiteral("Á°ÆÂÆöË¶ÅË¶ÅÈÄÄÂá∫Á®ãÂ∫è‰πàÔºü"),
+                                                           QStringLiteral("Á°ÆÂÆö"),
+                                                           QStringLiteral("ÂèñÊ∂à"));
+        if (ret == QDialog::Accepted)
+        {
+            stopRecord();
+            QApplication::quit();
+        }
+    });
+
+    mPopMenu->addAction(mQuitAction);
+//    mPopMenu->addSeparator();       //Ê∑ªÂä†ÂàÜÁ¶ªÂô®
+
+    mTrayicon = new QSystemTrayIcon(this);
+    QIcon ico(":/img/logo.png");
+    mTrayicon->setIcon(ico);  //ËÆæÁΩÆÂõæÊ†á
+    mTrayicon->setToolTip(QStringLiteral("ËßÜÈ¢ëÂΩïÂà∂ËΩØ‰ª∂"));
+    mTrayicon->setContextMenu(mPopMenu);  //ËÆæÁΩÆËèúÂçï(QMenu *trayiconMenu;)
+    mTrayicon->show(); //ÊòæÁ§∫ÊâòÁõò
+
+    connect(mTrayicon,SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+            this,SLOT(slotIconActivated(QSystemTrayIcon::ActivationReason)));//ÂõæÊ†áË¢´ÊøÄÊ¥ªÊó∂
+
+    mIsTopToolShowingOut   = false;
+
+    mAnimation_TopTool   = new QPropertyAnimation(ui->widget_top,   "geometry");
+
+    connect(mAnimation_TopTool,   &QPropertyAnimation::finished, [=]
+    {
+        if (mAnimation_TopTool->endValue().toRect().y() == 0) //Â±ïÂá∫
+        {
+            ui->widget_expand_top->hide();
+        }
+        else
+        {
+            ui->widget_expand_top->show();
+        }
+    });
+
+    mShowCameraWidget  = new ShowCameraWidget();
+    mShowCameraWidget->setGeometry(AppConfig::gLocalCameraWidgetRect);
+    mShowCameraWidget->hide();
+
+    connect(mShowCameraWidget, &ShowCameraWidget::sigViewStateChanged, [=](const bool &isShow)
+    {
+        ui->toolButton_camera->setChecked(isShow);
+    });
+
+    //rect
+    QDesktopWidget* desktopWidget = QApplication::desktop();
+    QRect screenRect = desktopWidget->screenGeometry();
+
+    connect(ui->toolButton_camera, SIGNAL(clicked(bool)), this, SLOT(slotBtnClicked(bool)));
+    connect(ui->toolButton_view,  SIGNAL(clicked(bool)), this, SLOT(slotBtnClicked(bool)));
+
+    connect(ui->toolButton_micro, SIGNAL(clicked(bool)), this, SLOT(slotBtnClicked(bool)));
+    connect(ui->toolButton_exit, SIGNAL(clicked(bool)),this, SLOT(slotBtnClicked(bool)));
+
+    connect(ui->toolButton_record_start,   &QToolButton::clicked, this, &MainWindow::slotBtnClicked);
+    connect(ui->toolButton_record_restore, &QToolButton::clicked, this, &MainWindow::slotBtnClicked);
+    connect(ui->toolButton_record_pause,   &QToolButton::clicked, this, &MainWindow::slotBtnClicked);
+    connect(ui->toolButton_record_stop,    &QToolButton::clicked, this, &MainWindow::slotBtnClicked);
+
+    mCaptureTaskManager = new CaptureTaskManager();
+    connect(mCaptureTaskManager, &CaptureTaskManager::sig_RecorderStateChanged, [=](const RecoderState &state)
+    {
+        this->setRecorderState(state);
+    });
+
+
+    auto getCameraVideoFrameFunc = [=](VideoRawFramePtr yuvFramePtr, VideoRawFramePtr rgbFramePtr, void *param)
+    {
+        mShowCameraWidget->inputVideoFrame(yuvFramePtr);
+    };
+
+    mCaptureTaskManager->setCameraFrameCallBackFunc(getCameraVideoFrameFunc, this);
+
+    mTimer_GetTime = new QTimer(this);
+    connect(mTimer_GetTime, &QTimer::timeout, this, &MainWindow::slotTimerTimeOut);
+    mTimer_GetTime->setInterval(500);
+    mTimer_GetTime->start();
+
+    mTimer_checkExe = new QTimer;
+    mTimer_checkExe->setInterval(1000);
+    connect(mTimer_checkExe, &QTimer::timeout, this, &MainWindow::slotTimerTimeOut_checkExe);
+    mTimer_checkExe->start();
+
+    showMicVolume(0);
+
+    {
+        ui->toolButton_record_start->show();
+        ui->toolButton_record_stop->hide();
+        ui->toolButton_record_restore->hide();
+        ui->toolButton_record_pause->hide();
     }
+
+    ui->pushButton_expand_top->installEventFilter(this);
+
+    ui->label_time_2->clear();
+//    ui->label_time_2->setPixmap(QPixmap(":/image/pull_top.png"));
+    ui->label_time_2->setText(QStringLiteral("ÊàëÁöÑÂΩïÂ±è"));
+
+    showOutTopTool();
+
+//    std::thread([=]
+//    {
+//        AppConfig::mSleep(2000);
+//        FunctionTransfer::runInMainThread([=]()
+//        {
+//            this->hideTopTool();
+//            this->hideRightTool();
+//        });
+//    }).detach();
+
+    bool IsAudioInDeviceExist  = false;
+    bool IsAudioOutDeviceExist = false;
+
+    if (QAudioDeviceInfo::availableDevices(QAudio::AudioInput).size() > 0)
+    {
+        IsAudioInDeviceExist = true;
+    }
+
+    if (QAudioDeviceInfo::availableDevices(QAudio::AudioOutput).size() > 0)
+    {
+        IsAudioOutDeviceExist = true;
+    }
+
+    if (IsAudioInDeviceExist)
+    {
+        mCaptureTaskManager->show();
+        mCaptureTaskManager->raise();
+    }
+    else
+    {
+        QString tipStr;
+
+        if (!IsAudioInDeviceExist)
+        {
+            tipStr = QStringLiteral("Êú™Ê£ÄÊµãÂà∞È∫¶ÂÖãÈ£éÔºåÊó†Ê≥ïÂΩïÂà∂ÔºÅ");
+        }
+
+        int ret = MyMessageBox_WithTitle::showWarningText(QStringLiteral("Ë≠¶Âëä"),
+                                                                   tipStr,
+                                                                   NULL,
+                                                                   QStringLiteral("ÈÄÄÂá∫Á®ãÂ∫è"));
+        std::thread([=]
+        {
+            AppConfig::mSleep(10);
+            FunctionTransfer::runInMainThread([=]()
+            {
+                QApplication::quit();
+            });
+        }).detach();
+
+    }
+
 }
 
 MainWindow::~MainWindow()
 {
+    qDebug()<<__FUNCTION__;
+
+    AppConfig::gLocalCameraWidgetRect = mShowCameraWidget->geometry();
+    AppConfig::saveConfigInfoToFile();
+    AppConfig::removeDirectory(AppConfig::AppDataPath_Tmp);
+
     delete ui;
-    delete selectRectWidget;
 }
 
-void MainWindow::showOut()
+void MainWindow::showOutTopTool()
 {
-    show();
-    move(deskRect.width() / 2 - width() / 2,0-height());
-    animation->setStartValue(QRect(deskRect.width() / 2 - width() / 2,0-height(),width(),height()));
-    animation->setEndValue(QRect(deskRect.width() / 2 - width() / 2,0,width(),height()));
-    animation->start();
-}
+    QDesktopWidget* desktopWidget = QApplication::desktop();
+    QRect screenRect = desktopWidget->screenGeometry();//Ëé∑ÂèñËÆæÂ§áÂ±èÂπïÂ§ßÂ∞è
+    QRect deskRect = desktopWidget->screenGeometry();//Ëé∑ÂèñËÆæÂ§áÂ±èÂπïÂ§ßÂ∞è
 
-void MainWindow::closeEvent(QCloseEvent *event)
-{
-    if (m_screenRecorder)
+    int x = screenRect.width() / 2 - ui->widget_top->width() / 2;
+    int y = 0 - ui->widget_top_tool_back->height();
+    int w = ui->widget_top->width();
+    int h = ui->widget_top->height();
+
+    mAnimation_TopTool->setDuration(600);
+    mAnimation_TopTool->setStartValue(QRect(x, y, w, h));
+    mAnimation_TopTool->setEndValue(QRect(x, 0, w, h));
+//    mAnimation_TopTool->setEasingCurve(QEasingCurve::CosineCurve);/*  ËÆæÁΩÆÂä®ÁîªÊïàÊûú  */
+    mAnimation_TopTool->start();
+
+    std::thread([=]
     {
-        m_screenRecorder->stopRecord();
-    }
-
-    selectRectWidget->close();
-}
-
-void MainWindow::mousePressEvent(QMouseEvent * event)
-{
-    if (event->button() == Qt::LeftButton)
-    {
-        isLeftBtnPressed = true;
-         dragPosition=event->globalPos()-frameGeometry().topLeft();
-         event->accept();
-    }
-}
-
-void MainWindow::mouseMoveEvent(QMouseEvent * event)
-{  // µœ÷ Û±Í“∆∂Ø¥∞ø⁄
-    if (event->buttons() & Qt::LeftButton)
-    {
-        if (isLeftBtnPressed)
+        AppConfig::mSleep(300);
+        FunctionTransfer::runInMainThread([=]()
         {
-            move(event->globalPos() - dragPosition);
-            event->accept();
-        }
-    }
+            ui->widget_expand_top->hide();
+        });
+    }).detach();
+
+
+    mLastMouseOnTopToolTime = QDateTime::currentMSecsSinceEpoch();
+    mIsTopToolShowingOut = true;
 }
 
-void MainWindow::mouseReleaseEvent(QMouseEvent * event)
+void MainWindow::hideTopTool()
 {
-    isLeftBtnPressed = false;
-    event->accept();
+    mAnimation_TopTool->stop();
+
+    QDesktopWidget* desktopWidget = QApplication::desktop();
+    QRect screenRect = desktopWidget->screenGeometry();//Ëé∑ÂèñËÆæÂ§áÂ±èÂπïÂ§ßÂ∞è
+    QRect deskRect = desktopWidget->screenGeometry();//Ëé∑ÂèñËÆæÂ§áÂ±èÂπïÂ§ßÂ∞è
+
+    int x = screenRect.width() / 2 - ui->widget_top->width() / 2;
+    int y = 0 - ui->widget_top_tool_back->height();
+    int w = ui->widget_top->width();
+    int h = ui->widget_top->height();
+
+    mAnimation_TopTool->setDuration(600);
+    mAnimation_TopTool->setStartValue(QRect(x, 0, w, h));
+    mAnimation_TopTool->setEndValue(QRect(x, y, w, h));
+//    mAnimation_TopTool->setEasingCurve(QEasingCurve::CosineCurve);/*  ËÆæÁΩÆÂä®ÁîªÊïàÊûú  */
+    mAnimation_TopTool->start();
+
+//    ui->pushButton_expand_top->show();
+    mIsTopToolShowingOut = false;
+
 }
 
-void MainWindow::loadConfigFile()
+void MainWindow::setRecorderState(const RecoderState &state)
 {
-
-    QFile file(AppConfig::AppFilePath_EtcFile);
-    if (file.open(QIODevice::ReadOnly))
+    if (state == State_Recording)
     {
-        QTextStream fileOut(&file);
-        fileOut.setCodec("GBK");  //unicode UTF-8  ANSI
-        while (!fileOut.atEnd())
+        ui->label_time_2->clear();
+
+        ui->toolButton_record_start->hide();
+        ui->toolButton_record_pause->show();
+        ui->toolButton_record_restore->hide();
+        ui->toolButton_record_stop->show();
+    }
+    else if (state == State_Pause)
+    {
+        ui->toolButton_record_start->hide();
+        ui->toolButton_record_pause->hide();
+        ui->toolButton_record_restore->show();
+        ui->toolButton_record_stop->show();
+    }
+    else if (state == State_Stop)
+    {
+        ui->toolButton_record_start->show();
+        ui->toolButton_record_pause->hide();
+        ui->toolButton_record_restore->hide();
+        ui->toolButton_record_stop->hide();
+
+        std::thread([=]
         {
-            QString str = fileOut.readLine();
-//            qDebug()<<str;
-
-            str = str.remove(" ");
-
-            if (str.isEmpty())
+            AppConfig::mSleep(1000);
+            FunctionTransfer::runInMainThread([=]()
             {
-                continue;
-            }
-
-            if (str.contains("area="))
-            {
-                str = str.remove("area=");
-
-                QStringList strList = str.split(",");
-
-                if (strList.size() == 4)
-                {
-                    rect = QRect(strList.at(0).toInt(),strList.at(1).toInt(),strList.at(2).toInt(),strList.at(3).toInt());
-                }
-            }
-            else if (str.contains("mode="))
-            {
-                str = str.remove("mode=");
-                if (str == "video")
-                {
-                    ui->toolButton_video->setChecked(true);
-                }
-                else
-                {
-                    ui->toolButton_audio->setChecked(true);
-                    ui->startButton->setEnabled(true);
-                }
-            }
-            else if (str.contains("framerate="))
-            {
-                str = str.remove("framerate=");
-
-                int rate = str.toInt();
-
-                if (rate > 0 && rate <= 25)
-                {
-                    ui->comboBox_framerate->setCurrentIndex(rate-1);
-                }
-            }
-            else if (str.contains("savedir="))
-            {
-                str = str.remove("savedir=");
-                str.replace("/","\\\\");
-                mSaveFileDir = str;
-
-                ui->lineEdit_filepath->setText(mSaveFileDir);
-
-                AppConfig::MakeDir(mSaveFileDir);
-
-            }
-        }
-        file.close();
-    }
-    else
-    {
-        ui->toolButton_video->setChecked(true);
-    }
-
-    if (rect.width() <= 0 || rect.height() <= 0 || !deskRect.contains(rect))
-    {
-        rect = deskRect;
-    }
-
-    selectRectWidget->setRect(rect);
-    ui->startButton->setEnabled(true);
-    selectRectWidget->setVisible(false);
-    ui->hideRectButton->setText(QStringLiteral("œ‘ æ"));
-    ui->startButton->setEnabled(true);
-}
-
-void MainWindow::saveConfigFile()
-{
-    QFile file(AppConfig::AppFilePath_EtcFile);
-    if (file.open(QIODevice::WriteOnly))
-    {
-        QTextStream fileOut(&file);
-        fileOut.setCodec("GBK");  //unicode UTF-8  ANSI
-
-        if (!ui->comboBox_audio->currentText().isEmpty())
-        {
-            fileOut<<QString("audio=%1").arg(ui->comboBox_audio->currentText());
-            fileOut<<"\n";
-        }
-
-        QString areaStr = QString("area=%1,%2,%3,%4").arg(rect.x()).arg(rect.y()).arg(rect.width()).arg(rect.height());
-        QString modeStr = "mode=audio";
-        if (ui->toolButton_video->isChecked())
-        {
-            modeStr = "mode=video";
-        }
-
-        QString fileStr = QString("savedir=%1").arg(mSaveFileDir);
-        QString rateStr = QString("framerate=%1").arg(ui->comboBox_framerate->currentText().toInt());
-
-        fileOut<<areaStr;
-        fileOut<<"\n";
-        fileOut<<modeStr;
-        fileOut<<"\n";
-        fileOut<<rateStr;
-        fileOut<<"\n";
-        fileOut<<fileStr;
-        fileOut<<"\n";
-
-        file.close();
+                ui->label_time_2->clear();
+    //            ui->label_time_2->setPixmap(QPixmap(":/image/pull_top.png"));
+                ui->label_time_2->setText(QStringLiteral("ÊàëÁöÑÂΩïÂ±è"));
+            });
+        }).detach();
     }
 }
 
-void MainWindow::initDev()
+void MainWindow::startRecord()
 {
-    QString videoDevName;
-    QString audioDevName;
-    QFile devFile(AppConfig::AppFilePath_EtcFile);
-    if (devFile.open(QIODevice::ReadOnly))
-    {
-        QTextStream fileOut(&devFile);
-        fileOut.setCodec("GBK");  //unicode UTF-8  ANSI
-
-        while (!fileOut.atEnd())
-        {
-            QString str = fileOut.readLine();
-            str = str.remove("\r");
-            str = str.remove("\n");
-            if (str.contains("video="))
-            {
-                videoDevName = str.remove("video=");
-            }
-            else if (str.contains("audio="))
-            {
-                audioDevName = str.remove("audio=");
-            }
-        }
-
-        devFile.close();
-    }
-
-    /// ÷¥––ffmpeg√¸¡Ó–– ªÒ»°“Ù ”∆µ…Ë±∏
-    /// «ÎΩ´ffmpeg.exe∫Õ≥Ã–Ú∑≈µΩÕ¨“ª∏ˆƒø¬ºœ¬
-
-    QString ffmpegPath = QCoreApplication::applicationDirPath() + "/ffmpeg.exe";
-    ffmpegPath.replace("/","\\\\");
-    ffmpegPath = QString("\"%1\" -list_devices true -f dshow -i dummy 2>a.txt \n").arg(ffmpegPath);
-
-     QProcess p(0);
-     p.start("cmd");
-     p.waitForStarted();
-     p.write(ffmpegPath.toLocal8Bit());
-     p.closeWriteChannel();
-     p.waitForFinished();
-
-
-    QFile file("a.txt");
-    if (file.open(QIODevice::ReadOnly))
-    {
-        QTextStream fileOut(&file);
-        fileOut.setCodec("UTF-8");  //unicode UTF-8  ANSI
-
-        bool isVideoBegin = false;
-        bool isAudioBegin = false;
-
-        while (!fileOut.atEnd())
-        {
-            QString str = fileOut.readLine();
-
-            if (str.contains("DirectShow video devices") && str.contains("[dshow @"))
-            {
-                isVideoBegin = true;
-                isAudioBegin = false;
-                continue;
-            }
-
-            if (str.contains("DirectShow audio devices") && str.contains("[dshow @"))
-            {
-                isAudioBegin = true;
-                isVideoBegin = false;
-                continue;
-            }
-
-            if (str.contains("[dshow @") && (!str.contains("Alternative name")) )
-            {
-                int index = str.indexOf("\"");
-                str = str.remove(0,index);
-                str = str.remove("\"");
-                str = str.remove("\n");
-                str = str.remove("\r");
-
-                if (isVideoBegin)
-                {
-//                    if ("screen-capture-recorder" != str)
-//                    ui->comboBox_camera->addItem(str);
-                }
-                else if (isAudioBegin)
-                {
-                    if ("virtual-audio-capturer" != str)
-                        ui->comboBox_audio->addItem(str);
-                }
-            }
-
-        }
-
-        file.close();
-    }
-    else
-    {
-        qDebug()<<"open a.txt failed!";
-    }
-
-    QFile::remove("a.txt");
-
-    for (int i=0;i<ui->comboBox_audio->count();i++)
-    {
-        if (ui->comboBox_audio->itemText(i) == audioDevName)
-        {
-            ui->comboBox_audio->setCurrentIndex(i);
-            break;
-        }
-    }
-
+    mCaptureTaskManager->startRecord();
 }
 
-void MainWindow::slotBtnClicked()
+void MainWindow::pauseRecord()
 {
-    if (QObject::sender() == ui->startButton)
-    {
-        startRecord();
-    }
-    else if (QObject::sender() == ui->pauseButton)
-    {
-        pauseRecord();
-    }
-    else if (QObject::sender() == ui->stopButton)
-    {
-        stopRecord();
-    }
-    else if (QObject::sender() == ui->pushButton_playBack)
-    {
-        QString path = mCurrentFilePath;
-        path.replace("\\\\","/");
-        path="file:///" + path;
-        qDebug()<<QUrl(path)<<path;
-        QDesktopServices::openUrl(QUrl(path));
-    }
+    mCaptureTaskManager->pauseRecord();
 }
 
-void MainWindow::slotToolBtnToggled(bool isChecked)
+void MainWindow::restoreRecord()
 {
-    if (QObject::sender() == ui->toolButton_video)
-    {
-        if (isChecked)
-        {
-            ui->toolButton_audio->setChecked(!isChecked);
-            selectRectWidget->show();
-        }
-        else
-        {
-            ui->toolButton_video->setChecked(!isChecked);
-        }
-    }
-    else if (QObject::sender() == ui->toolButton_audio)
-    {
-        if (isChecked)
-        {
-            ui->toolButton_video->setChecked(!isChecked);
-            selectRectWidget->hide();
-        }
-        else
-        {
-            ui->toolButton_audio->setChecked(!isChecked);
-        }
-    }
-    else if (QObject::sender() == ui->toolButton_file)
-    {
-        QString s = QFileDialog::getExistingDirectory(
-                     NULL, "—°‘Ò±£¥ÊŒƒº˛µƒ¬∑æ¢",
-                     mSaveFileDir);
-
-         if (!s.isEmpty())
-         {
-//             mSaveFileDir = s.replace("/","\\\\");
-             ui->lineEdit_filepath->setText(mSaveFileDir);
-         }
-    }
+    mCaptureTaskManager->restoreRecord();
 }
 
-void MainWindow::slotSelectRectFinished(QRect re)
+void MainWindow::stopRecord()
 {
-    /// 1.¥´∏¯ffmpeg±‡¬ÎµƒÕºœÒøÌ∏ﬂ±ÿ–Î «≈º ˝°£
-    /// 2.ÕºœÒ≤√ºÙµƒ∆ ºŒª÷√∫ÕΩ· ¯Œª÷√“≤±ÿ–Î «≈º ˝
-    /// ∂¯ ÷∂Ø—°‘Òµƒ«¯”Ú∫‹”–ø…ƒ‹ª· «∆Ê ˝£¨“Ú¥À–Ë“™¥¶¿Ì“ªœ¬ ∏¯À˚≈™≥…≈º ˝
-    /// ¥¶¿Ìµƒ∑Ω∑®∫‹ºÚ¥£∫∆‰ µæÕ «Õ˘«∞ªÚ’ﬂÕ˘∫Û“∆“ª∏ˆœÒÀÿ
-    /// “ª∏ˆœÒÀÿµƒ¥Û–°»‚—€ª˘±æ“≤ø¥≤ª≥ˆ¿¥…∂«¯±°£
-
-    int x = re.x();
-    int y = re.y();
-    int w = re.width();
-    int h = re.height();
-
-    if (x % 2 != 0)
-    {
-        x--;
-        w++;
-    }
-
-    if (y % 2 != 0)
-    {
-        y--;
-        h++;
-    }
-
-    if (w % 2 != 0)
-    {
-        w++;
-    }
-
-    if (h % 2 != 0)
-    {
-        h++;
-    }
-
-    rect = QRect(x,y,w,h);
-
-    QString str = QStringLiteral("==µ±«∞«¯”Ú==\n\n∆µ„(%1,%2)\n\n¥Û–°(%3 x %4)")
-            .arg(rect.left()).arg(rect.left()).arg(rect.width()).arg(rect.height());
-
-    ui->showRectInfoLabel->setText(str);
-
-    ui->startButton->setEnabled(true);
-    ui->editRectButton->setEnabled(true);
-    ui->hideRectButton->setEnabled(true);
-    ui->hideRectButton->setText(QStringLiteral("“˛≤ÿ"));
-
-    saveConfigFile();
-
+    mCaptureTaskManager->stopRecord();
 }
 
-bool MainWindow::startRecord()
+void MainWindow::showMicVolume(const int &value)
 {
-    int ret = 0;
-    QString msg = "ok";
-    if (m_recordeState == Recording)
-    {
-        ret = -1;
-        msg = "is already start!";
-    }
-    else if (m_recordeState == Pause)
-    {
-        ui->startButton->setEnabled(false);
-        ui->pauseButton->setEnabled(true);
-        ui->stopButton->setEnabled(true);
+//    qDebug()<<__FUNCTION__<<value;
+    int height = value / 100.0 * ui->label_Micro_green->height();
+    height = ui->label_Micro_green->height() - height;
+    ui->label_Micro_black->resize(ui->label_Micro_black->width(), height);
+};
 
-        m_screenRecorder->restoreRecord();
-
-        m_recordeState = Recording;
-        m_timer->start();
-    }
-    else if (m_recordeState == Stop)
-    {
-
-        if (rect.width() <= 0 || rect.height() <= 0 || !deskRect.contains(rect))
-        {
-            rect = deskRect;
-        }
-
-        ///±£¥Ê≈‰÷√Œƒº˛
-        saveConfigFile();
-
-        QString audioDevName = ui->comboBox_audio->currentText();
-
-        if (audioDevName.isEmpty())
-        {
-            QMessageBox::critical(this, QStringLiteral("Ã· æ"), QStringLiteral("≥ˆ¥Ì¡À,“Ù∆µªÚ ”∆µ…Ë±∏Œ¥æÕ–˜£¨≥Ã–ÚŒﬁ∑®‘À––£°"));
-
-            ret = -3;
-            msg = "audio device not set";
-            goto end;
-        }
-
-        if (m_screenRecorder)
-            delete m_screenRecorder;
-
-        QDateTime dateTime = QDateTime::currentDateTime();
-        QString fileName = QString("video_%1.mp4").arg(dateTime.toString("yyyy-MM-dd hhmmss"));
-        mCurrentFilePath = QString("%1/%2").arg(mSaveFileDir).arg(fileName);
-
-
-        m_screenRecorder = new ScreenRecorder;
-        m_screenRecorder->setFileName(mCurrentFilePath);
-        m_screenRecorder->setVideoFrameRate(ui->comboBox_framerate->currentText().toInt());
-
-        if (ui->toolButton_video->isChecked())
-        {
-            if (m_screenRecorder->init("screen-capture-recorder",true,audioDevName,true) == SUCCEED)
-            {
-                m_screenRecorder->setPicRange(rect.x(),rect.y(),rect.width(),rect.height());
-                m_screenRecorder->startRecord();
-            }
-            else
-            {
-                QMessageBox::critical(this, QStringLiteral("Ã· æ"), QStringLiteral("≥ˆ¥Ì¡À,≥ı ºªØ¬º∆¡…Ë±∏ ß∞‹£°"));
-
-                ret = -4;
-                msg = "init screen device failed!";
-                goto end;
-
-            }
-        }
-        else
-        {
-            if (m_screenRecorder->init("",false,audioDevName,true) == SUCCEED)
-            {
-//                    qDebug()<<rect;
-                m_screenRecorder->setPicRange(rect.x(),rect.y(),rect.width(),rect.height());
-                m_screenRecorder->startRecord();
-            }
-            else
-            {
-                QMessageBox::critical(this, QStringLiteral("Ã· æ"), QStringLiteral("≥ˆ¥Ì¡À,≥ı ºªØ“Ù∆µ…Ë±∏ ß∞‹£°"));
-                ret = -5;
-                msg = "init audio device failed!";
-                goto end;
-            }
-        }
-
-        ui->startButton->setEnabled(false);
-        ui->pauseButton->setEnabled(true);
-        ui->stopButton->setEnabled(true);
-
-        ui->selectRectButton->setEnabled(false);
-        ui->editRectButton->setEnabled(false);
-        //ui->hideRectButton->setEnabled(false);
-
-        ui->comboBox_audio->setEnabled(false);
-    //    ui->comboBox_recordeMode->setEnabled(false);
-
-        ui->toolButton_video->setEnabled(false);
-        ui->toolButton_audio->setEnabled(false);
-
-        m_recordeState = Recording;
-        m_timer->start();
-
-
-        ui->pushButton_playBack->setEnabled(false);
-    }
-
-end:
-
-//    m_erroMsg = QString("\"ret\":%1,\"msg\":\"%2\"").arg(ret).arg(msg);
-    return ret == 0;
-}
-
-bool MainWindow::pauseRecord()
+void MainWindow::OnAudioVolumeUpdated(const int &volumeL, const int &volumeR)
 {
-    int ret = 0;
-    QString msg = "ok";
-    if (m_recordeState == Recording)
+//    qDebug()<<__FUNCTION__<<volumeL<<volumeR;
+    FunctionTransfer::runInMainThread([=]()
     {
-        m_timer->stop();
-
-        ui->startButton->setEnabled(true);
-        ui->pauseButton->setEnabled(false);
-
-        ui->selectRectButton->setEnabled(false);
-        ui->editRectButton->setEnabled(false);
-        //ui->hideRectButton->setEnabled(false);
-
-        m_screenRecorder->pauseRecord();
-
-        m_recordeState = Pause;
-    }
-    else
-    {
-        ret = -6;
-        msg = "is not started!";
-    }
-
-//    m_erroMsg = QString("\"ret\":%1,\"msg\":\"%2\"").arg(ret).arg(msg);
-    return ret == 0;
-}
-
-bool MainWindow::stopRecord()
-{
-    int ret = 0;
-    QString msg = "ok";
-    if (m_recordeState != Stop)
-    {
-        m_timer->stop();
-        m_recordeState = Stop;
-        ui->label_time->setText("00:00:00");
-        m_screenRecorder->stopRecord();
-
-        ui->startButton->setEnabled(true);
-        ui->pauseButton->setEnabled(false);
-        ui->stopButton->setEnabled(false);
-
-        ui->selectRectButton->setEnabled(true);
-        ui->editRectButton->setEnabled(true);
-
-        ui->comboBox_audio->setEnabled(true);
-        ui->toolButton_video->setEnabled(true);
-        ui->toolButton_audio->setEnabled(true);
-
-        ui->pushButton_playBack->setEnabled(true);
-
-    }
-    else
-    {
-        ret = -7;
-        msg = "not started!";
-    }
-
-//    m_erroMsg = QString("\"ret\":%1,\"msg\":\"%2\"").arg(ret).arg(msg);
-
-    return ret == 0;
-}
-
-void MainWindow::slotSelectRectBtnClick()
-{
-    selectRectWidget->getReadyToSelect();
-}
-
-void MainWindow::slotEditRectBtnClick()
-{
-    selectRectWidget->showFullScreen();
-    selectRectWidget->editRect();
-}
-
-void MainWindow::slotHideRectBtnClick()
-{
-    if (selectRectWidget->isVisible())
-    {
-       selectRectWidget->setVisible(false);
-       ui->hideRectButton->setText(QStringLiteral("œ‘ æ"));
-    }
-    else
-    {
-       selectRectWidget->setVisible(true);
-       ui->hideRectButton->setText(QStringLiteral("“˛≤ÿ"));
-    }
+        showMicVolume(volumeL);
+    });
 }
 
 void MainWindow::slotTimerTimeOut()
 {
-    qint64 audioPts = 0;
-    if (m_screenRecorder)
+    if (QObject::sender() == mTimer_GetTime)
     {
-        audioPts = m_screenRecorder->getAudioPts();
+        ///ËÆæÁΩÆÊó∂Èó¥
+        {
+            int64_t currentTime = 0;
 
-        audioPts /= 1000; //ªªÀ„≥…√Î
+            {
+                currentTime = mCaptureTaskManager->getVideoFileCurrentTime();
+            }
+
+            currentTime /= 1000;
+
+            int minutes = currentTime / 60;
+            int hours = minutes / 60;
+            int minute = minutes % 60;
+            int second = currentTime % 60;
+
+            char timeCh[16] = {0};
+            sprintf(timeCh, "%02d:%02d:%02d",hours, minute, second);
+
+            ui->label_time->setText(QString(timeCh));
+
+            if (currentTime != 0)
+            {
+                ui->label_time_2->setText(QString(timeCh));
+            }
+
+//qDebug()<<__FUNCTION__<<timeCh;
+        }
+
+        ///Ê£ÄÊµãÊòØÂê¶ÈúÄË¶ÅÁº©ÂõûÈ°∂ÈÉ®Êéß‰ª∂
+        if (mIsTopToolShowingOut)
+        {
+            QPoint globalPoint(ui->widget_top_tool_back->mapToGlobal(QPoint(0, 0)));
+
+            QRect widgetRect;
+            widgetRect.setTopLeft(globalPoint);
+            widgetRect.setWidth(ui->widget_top_tool_back->width());
+            widgetRect.setHeight(ui->widget_top_tool_back->height() + ui->widget_time->height());
+//qDebug()<<__FUNCTION__<<ui->widget_pentype->hasFocus()<<ui->widget_pentype_back->hasFocus()<<ui->toolButton_pen_type_arrow->hasFocus()<<ui->toolButton_pen_type_rect->hasFocus()<<ui->toolButton_pen_type_ellipse->hasFocus()<<ui->toolButton_pen_type_pen->hasFocus();
+            if (widgetRect.contains(QCursor::pos()))
+            {
+                mLastMouseOnTopToolTime = QDateTime::currentMSecsSinceEpoch();
+            }
+
+            if ((QDateTime::currentMSecsSinceEpoch() - mLastMouseOnTopToolTime) >= 3000)
+            {
+                hideTopTool();
+            }
+        }
+
     }
-
-    QString hStr = QString("00%1").arg(audioPts/3600);
-    QString mStr = QString("00%1").arg(audioPts%3600/60);
-    QString sStr = QString("00%1").arg(audioPts%60);
-
-    QString str = QString("%1:%2:%3").arg(hStr.right(2)).arg(mStr.right(2)).arg(sStr.right(2));
-    ui->label_time->setText(str);
-
 }
 
-void MainWindow::slotCheckBoxClick(bool checked)
+void MainWindow::setAlphaValue(int value)
 {
-    if (checked)
+    QString rgbaStr = QString("rgba(255, 255, 255, %1)").arg((float)value/100);
+
+    QString styleStr = QString("QWidget#widget_top {background-color: %1;}").arg(rgbaStr);
+
+    ui->widget_top->setStyleSheet(styleStr);
+}
+
+void MainWindow::slotIconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+    switch(reason)
     {
-        selectRectWidget->setRate(m_rate);
-    }
-    else
-    {
-        selectRectWidget->setRate(-1);
+    case QSystemTrayIcon::Trigger://ÂçïÂáª
+    case QSystemTrayIcon::DoubleClick://ÂèåÂáª
+        this->showOutTopTool();
+        break;
+    case QSystemTrayIcon::MiddleClick:
+        mTrayicon->showMessage(tr("ËßÜÈ¢ëÂΩïÂà∂ËΩØ‰ª∂"),tr("Ê¨¢ËøéËÆøÈóÆÔºöblog.yundiantech.com"),QSystemTrayIcon::Information,10000);
+        break;
+    default:
+        ;
     }
 }
 
+void MainWindow::slotBtnClicked(bool isChecked)
+{
+    if (QObject::sender() == ui->toolButton_camera)
+    {
+        if (isChecked)
+        {
+            mShowCameraWidget->showOut();
+        }
+        else
+        {
+            mShowCameraWidget->hideIn();
+        }
+    }
+    else if (QObject::sender() == ui->toolButton_view)
+    {
+        mCaptureTaskManager->show();
+        mCaptureTaskManager->raise();
+    }
+    else if (QObject::sender() == ui->toolButton_micro)
+    {
+//        qDebug() << "pushButton_Micro:" << isChecked;
+        mCaptureTaskManager->muteMicroPhone(isChecked);
+    }
+    else if (QObject::sender() == ui->toolButton_record_start)
+    {
+        startRecord();
+    }
+    else if (QObject::sender() == ui->toolButton_record_restore)
+    {
+        restoreRecord();
+    }
+    else if (QObject::sender() == ui->toolButton_record_pause)
+    {
+        pauseRecord();
+    }
+    else if (QObject::sender() == ui->toolButton_record_stop)
+    {
+        stopRecord();
+    }
+    else if (QObject::sender() == ui->toolButton_exit)
+    {
+        int ret = MyMessageBox_WithTitle::showWarningText(QStringLiteral("Ë≠¶Âëä"),
+                                                           QStringLiteral("Á°ÆÂÆöË¶ÅË¶ÅÈÄÄÂá∫Á®ãÂ∫è‰πàÔºü"),
+                                                           QStringLiteral("Á°ÆÂÆö"),
+                                                           QStringLiteral("ÂèñÊ∂à"));
+        if (ret == QDialog::Accepted)
+        {
+            stopRecord();
+            QApplication::quit();
+        }
+    }
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == ui->pushButton_expand_top)
+    {
+        if (event->type() == QEvent::Enter)
+        {
+            if (mAnimation_TopTool->state() != QAbstractAnimation::Running)
+            {
+                showOutTopTool();
+            }
+        }
+    }
+
+    return QObject::eventFilter(obj, event);
+}
+
+///Ê£ÄÊµãÂêåÊó∂ËøêË°åÂ§ö‰∏™exe - begin
+void MainWindow::slotTimerTimeOut_checkExe()
+{
+    QSharedMemory *sharedmem = new QSharedMemory(AppConfig::Memory_KEY_NAME);
+    if (sharedmem->create(1024))
+    {
+        sharedmem->lock();
+        char * to = static_cast<char*>(sharedmem->data());
+        const char * from = "from dbzhang800-shared.";
+        ::memcpy(to, from, 24);
+        sharedmem->unlock();
+    }
+    else if (sharedmem->attach())
+    {
+//        qDebug("shared memory attached.");
+        sharedmem->lock();
+        const char * data = static_cast<const char*>(sharedmem->constData());
+        QString str = QString(data);
+//        qDebug(data);
+        sharedmem->unlock();
+
+        if (str == "show out")
+        {
+            sharedmem->lock();
+            char * to = static_cast<char*>(sharedmem->data());
+
+            ::memset(to,0,1024);
+            sharedmem->unlock();
+
+            {
+                qDebug()<<str<<this->isMinimized();
+
+                {
+                    if (this->isMinimized())
+                    {
+                        this->showNormal();
+                        this->raise();
+                    }
+                    else
+                    {
+                        this->show();
+                        this->raise();
+                        this->showOutTopTool();
+                    }
+                }
+            }
+        }
+    }
+    else {
+//        QMessageBox::information(NULL,"3333","erro");
+
+//        qDebug("error.");
+    }
+    delete sharedmem;
+}
+
+///Ê£ÄÊµãÂêåÊó∂ËøêË°åÂ§ö‰∏™exe - end

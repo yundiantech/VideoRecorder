@@ -1,0 +1,53 @@
+<RCC>
+    <qresource prefix="/">
+        <file>image/arrow.png</file>
+        <file>image/micro.png</file>
+        <file>image/min.png</file>
+        <file>image/pen.png</file>
+        <file>image/red.png</file>
+        <file>image/set.png</file>
+        <file>image/less.png</file>
+        <file>image/close_2_normal.png</file>
+        <file>image/closebtn.png</file>
+        <file>image/closebtn_countdown.png</file>
+        <file>image/close_btn_3.png</file>
+        <file>image/close_hover.png</file>
+        <file>image/close_normal.png</file>
+        <file>image/micro_2.png</file>
+        <file>image/micro_mute.png</file>
+        <file>image/Dropdown_btn.png</file>
+        <file>image/full.png</file>
+        <file>image/camera_g.png</file>
+        <file>image/camera.png</file>
+        <file>image/ic-menu-default.png</file>
+        <file>image/micro_mute1.png</file>
+        <file>image/checkbox_normal.png</file>
+        <file>image/checkbox_selected.png</file>
+        <file>image/btn_record_pause.png</file>
+        <file>image/btn_record_restore.png</file>
+        <file>image/btn_record_start.png</file>
+        <file>image/btn_record_stop.png</file>
+        <file>image/radiobtn_normal.png</file>
+        <file>image/radiobtn_selected.png</file>
+    </qresource>
+    <qresource prefix="/img">
+        <file>logo.png</file>
+    </qresource>
+    <qresource prefix="/player">
+        <file>image/videoplayer/audio.png</file>
+        <file>image/videoplayer/close_normal.png</file>
+        <file>image/videoplayer/showmaxsizebtn.png</file>
+        <file>image/videoplayer/showminisizebtn.png</file>
+        <file>image/videoplayer/shownormalbtn.png</file>
+        <file>image/videoplayer/stop_focus.png</file>
+        <file>image/videoplayer/stop_normal.png</file>
+        <file>image/videoplayer/stop1_normal.png</file>
+        <file>image/videoplayer/volume.psd</file>
+        <file>image/videoplayer/volume_mute.png</file>
+        <file>image/videoplayer/volume_normal.png</file>
+        <file>image/videoplayer/delete.png</file>
+        <file>image/videoplayer/open.png</file>
+        <file>image/videoplayer/pause.png</file>
+        <file>image/videoplayer/start.png</file>
+    </qresource>
+</RCC>

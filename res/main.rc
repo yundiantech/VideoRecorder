@@ -1,0 +1,32 @@
+#include "winver.h"
+
+IDI_ICON1       ICON      "logo.ico"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    3,0,0,0
+ PRODUCTVERSION 3,0,0,0
+ FILEFLAGS      0x0L
+ FILEFLAGSMASK  0x3fL
+ FILEOS         VOS_NT_WINDOWS32
+ FILETYPE       VFT_APP
+ FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "CompanyName", "云巅科技"
+            VALUE "FileDescription", "视频录制软件"
+            VALUE "FileVersion", "3.0.0"
+            VALUE "LegalCopyright", "云巅科技"
+            VALUE "InternalName", "云课堂"
+            VALUE "OriginalFilename", "视频录制软件"
+            VALUE "ProductName", "视频录制软件"
+            VALUE "ProductVersion", "3.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END

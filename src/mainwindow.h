@@ -1,102 +1,103 @@
-
-/**
- * Ò¶º£»Ô
- * QQÈº121376426
+ï»¿/**
+ * å¶æµ·è¾‰
+ * QQç¾¤121376426
  * http://blog.yundiantech.com/
  */
 
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QUdpSocket>
-#include <QHostInfo>
-#include <QMessageBox>
-#include <QScrollBar>
-#include <QDateTime>
-#include <QNetworkInterface>
-#include <QProcess>
-
 #include <QMainWindow>
-#include <QPropertyAnimation>
-
-#include "widget/selectrect.h"
-#include "video/screenrecorder.h"
 
 namespace Ui {
 class MainWindow;
 }
 
-class MainWindow : public QMainWindow
+#include <QWidget>
+#include <QPropertyAnimation>
+
+#include <QtWebSockets/QWebSocket>
+
+#include <QListWidgetItem>
+
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QJsonArray>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QAction>
+
+#include "AppConfig.h"
+#include "Media/MediaManager.h"
+
+#include "Camera/ShowCameraWidget.h"
+#include "CaptureTask/CaptureTaskManager.h"
+
+#include "AppConfig.h"
+
+class MainWindow :public QWidget, public VideoRecorderEventHandle
 {
     Q_OBJECT
 
 public:
-
-    enum RecoderState
-    {
-        Recording,
-        Pause,
-        Stop
-    };
-
-    explicit MainWindow(QWidget *parent = 0);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
-public slots:
-    void showOut();
-
-protected:
-    void closeEvent(QCloseEvent *);
-
-protected:
-    void mousePressEvent(QMouseEvent *);
-    void mouseMoveEvent(QMouseEvent *);
-    void mouseReleaseEvent(QMouseEvent *);
 
 private:
     Ui::MainWindow *ui;
 
-    bool isLeftBtnPressed;
-    QPoint dragPosition;
+    /***ç³»ç»Ÿæ‰˜ç›˜****/
+    QSystemTrayIcon *mTrayicon;
+    QMenu *mPopMenu;
+    QAction *mQuitAction;
 
-    QPropertyAnimation *animation; //¶¯»­Àà ÓÃÀ´ÊµÏÖ´°Ìå´ÓÉÏ·½ÂıÂı³öÏÖ
+    void setRecorderState(const RecoderState &state);
 
-    QString mSaveFileDir; //ÊÓÆµ±£´æÄ¿Â¼
-    QString mCurrentFilePath; //µ±Ç°Â¼ÖÆµÄÊÓÆµÎÄ¼ş´æ·ÅÂ·¾¶
+    ///å½•å±åŠŸèƒ½ç›¸å…³
+    void startRecord();
+    void pauseRecord();
+    void restoreRecord();
+    void stopRecord();
 
-    ScreenRecorder *m_screenRecorder;
-    QRect deskRect; //¿ÉÓÃ×ÀÃæ´óĞ¡
-    SelectRect *selectRectWidget;  //Ñ¡ÔñÇøÓòµÄ¿Ø¼ş
-    QRect rect; //µ±Ç°Â¼ÖÆµÄÇøÓò
-    float m_rate; //ÆÁÄ»¿í¸ß±È
+    void setAlphaValue(int value);
 
-    QTimer * m_timer; //¶¨Ê±Æ÷ ÓÃÓÚ»ñÈ¡Ê±¼ä
+    ///åŠ¨ç”»æ§åˆ¶æ§ä»¶
+    QPropertyAnimation* mAnimation_TopTool;
 
-    RecoderState m_recordeState;
+    bool mIsTopToolShowingOut;   //é¡¶éƒ¨æ§ä»¶æ˜¯å¦æ˜¾ç¤º
+    qint64 mLastMouseOnTopToolTime; //æœ€åä¸€æ¬¡é¼ æ ‡æ”¾åœ¨åŒºåŸŸå†…çš„æ—¶é—´
 
-    void initDev(); //»ñÈ¡Â¼ÒôÉè±¸µÄÁĞ±í
+    ShowCameraWidget  *mShowCameraWidget;  //æ˜¾ç¤ºæ‘„åƒå¤´ç”»é¢
+    CaptureTaskManager *mCaptureTaskManager; //è®¾ç½®æ•æ‰çª—ä½“çš„æ§ä»¶
 
-    void loadConfigFile(); //¼ÓÔØÅäÖÃÎÄ¼ş
-    void saveConfigFile(); //Ğ´ÈëÅäÖÃÎÄ¼ş
+    void showOutTopTool();
+    void hideTopTool();
 
-    bool startRecord();
-    bool pauseRecord();
-    bool stopRecord();
+    QTimer *mTimer_GetTime; //å®šæ—¶å™¨-è·å–æ—¶é—´
+    QTimer *mTimer_checkExe; //ç”¨äºæ£€æµ‹æ˜¯å¦åŒæ—¶è¿è¡Œå¤šä¸ªEXE
+
+    void showMicVolume(const int &value);
 
 private slots:
-    void slotToolBtnToggled(bool);
-    void slotBtnClicked();
+    void slotIconActivated(QSystemTrayIcon::ActivationReason);
 
-    ///Ñ¡ÔñÂ¼ÆÁÇøÓòÏà¹Ø - Begin
-    void slotSelectRectBtnClick();
-    void slotEditRectBtnClick();
-    void slotHideRectBtnClick();
-    void slotSelectRectFinished(QRect);
-    ///Ñ¡ÔñÂ¼ÆÁÇøÓòÏà¹Ø - End
+    void slotBtnClicked(bool isChecked);
 
     void slotTimerTimeOut();
+    void slotTimerTimeOut_checkExe();  //æ£€æµ‹åŒæ—¶è¿è¡Œå¤šä¸ªexe
 
-    void slotCheckBoxClick(bool checked);
+protected:
+    /**
+     * @brief è¾“å‡ºéŸ³é¢‘éŸ³é‡
+     * @param volume éŸ³é‡å¤§å°:0~100
+     */
+    void OnAudioVolumeUpdated(const int &volumeL, const int &volumeR) override;
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event);
+//    void closeEvent(QCloseEvent *event);
+
 };
 
 #endif // MAINWINDOW_H

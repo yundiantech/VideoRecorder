@@ -2,6 +2,8 @@
 # Qt+ffmpeg实现的录屏软件
 博客地址：http://blog.yundiantech.com/?log=blog&scat=196
 
+![Image text](https://raw.githubusercontent.com/yundiantech/VideoRecorder/master/pic/screenshot.png)
+
 
 版本说明：  
 Qt开发环境的搭建 请参考：  
@@ -60,4 +62,10 @@ Qt5.6.2(vs2013) + ffmpeg4.1
 1.解决windows自带播放器不能播放的问题  
 2.修改文件地址为rtmp地址后即可实现推流
 
+
+
+【V3.0.0】 2021-05.11  
+Qt5.13.2(vs2017) + ffmpeg4.1  
+1.功能增强，支持扩展模式  
+2.录屏插件支持命令行直接注册  
 

@@ -1,3 +1,9 @@
+ï»¿/**
+ * å¶æµ·è¾‰
+ * QQç¾¤121376426
+ * http://blog.yundiantech.com/
+ */
+
 #ifndef APPCONFIG_H
 #define APPCONFIG_H
 
@@ -6,58 +12,123 @@
 #include <QFile>
 #include <QString>
 #include <QTranslator>
+#include <QDateTime>
+#include <QColor>
+#include <QRect>
+#include <QPixmap>
+
+///ç”¨æ¥å’Œä¸»ç¨‹åºé€šä¿¡çš„å…±äº«å†…å­˜KEY
+#define Memory_KEY_NAME_Main "QuickvideoWebClient_Eyecool_HUI_123"
+#define CURRENT_TIME QDateTime::currentDateTime().toString("[yyyy-MM-dd hh:mm:ss]")
+
+#ifdef QT_NO_KEYWORDS
+#define foreach Q_FOREACH
+#endif
 
 class MainWindow;
+class MediaManager;
+
+#include <QSpacerItem>
+#include <QLayout>
+#include <QSizePolicy>
+#include <QWidget>
+#include <QObject>
+#include <QSize>
+#include <QTableWidget>
+#include <QHeaderView>
+
+#define OBJMAXSIZE 16777215
+#define OBJMINSIZE 0
 
 class AppConfig
 {
 public:
     AppConfig();
 
+    static QString APPID;
     static int VERSION;
     static QString VERSION_NAME;
 
-    /// ±¾µØÈ«¾Ö±äÁ¿
-    static QString AppDataPath_Main; //³ÌĞòÊı¾İÖ÷Ä¿Â¼
-    static QString AppDataPath_Data; //³ÌĞòÊı¾İµÄdataÄ¿Â¼
-    static QString AppDataPath_Tmp; //ÁÙÊ±Ä¿Â¼(³ÌĞòÍË³öÊ±»áÇå¿Õ´ËÄ¿Â¼)
-    static QString AppDataPath_TmpFile; //³ÌĞòÔËĞĞÊ± ´´½¨´ÎÎÄ¼ş£¬ÍË³öÊ±É¾³ı´ËÎÄ¼ş£¬ÓÃÀ´ÅĞ¶Ï³ÌĞòÊÇ·ñÕı³£ÍË³ö
-    static QString AppFilePath_Log; //ÈÕÖ¾Ä¿Â¼
-    static QString AppFilePath_Video; //ÊÓÆµÎÄ¼ş±£´æÄ¿Â¼
-    static QString AppFilePath_LogFile; //ÈÕÖ¾ÎÄ¼ş
-    static QString AppFilePath_EtcFile; //ÅäÖÃĞÅÏ¢
+    /// SERVER URL
+    static QString URL_ROOT;
+    static QString URL_UPDATE; //æ›´æ–°URL
+
+    static QString Memory_KEY_NAME;
+
+    /// æœ¬åœ°å…¨å±€å˜é‡
+    static QString AppDataPath_Main; //ç¨‹åºæ•°æ®ä¸»ç›®å½•
+    static QString AppDataPath_Data; //ç¨‹åºæ•°æ®çš„dataç›®å½•
+    static QString AppDataPath_Tmp; //ä¸´æ—¶ç›®å½•(ç¨‹åºé€€å‡ºæ—¶ä¼šæ¸…ç©ºæ­¤ç›®å½•)
+    static QString AppDataPath_TmpFile; //ç¨‹åºè¿è¡Œæ—¶ åˆ›å»ºæ¬¡æ–‡ä»¶ï¼Œé€€å‡ºæ—¶åˆ é™¤æ­¤æ–‡ä»¶ï¼Œç”¨æ¥åˆ¤æ–­ç¨‹åºæ˜¯å¦æ­£å¸¸é€€å‡º
+    static QString AppFilePath_Log; //æ—¥å¿—ç›®å½•
+    static QString AppFilePath_LogFile; //æ—¥å¿—æ–‡ä»¶
+    static QString AppFilePath_EtcFile; //é…ç½®ä¿¡æ¯
+    static QString AppFilePath_DBFile; //æœ¬åœ°æ•°æ®åº“
+    static QString AppDataPath_Video;  //é»˜è®¤å­˜æ”¾è§†é¢‘çš„ç›®å½•
+
+    static bool gIsDebugMode; //æ˜¯å¦è°ƒè¯•æ¨¡å¼ï¼Œè°ƒè¯•æ¨¡å¼ä¸‹ï¼Œæ—¥å¿—è¾“å‡ºä¼šå¤šä¸€äº›ï¼ˆæŒ‰ctrl+shirt+alt+Dè¿›å…¥è°ƒè¯•æ¨¡å¼ï¼‰
+    static bool gVideoKeepAspectRatio; //è§†é¢‘æ˜¯å¦æŒ‰æ¯”ä¾‹æ˜¾ç¤º
+    static bool gVideoHardDecoder; //ç¡¬è§£è§£ç 
+    static QString gVideoFilePath; //æ‰“å¼€è§†é¢‘æ–‡ä»¶çš„é»˜è®¤ä½ç½®(è§†é¢‘æ’­æ”¾æ¨¡å¼)
+
+    static QString gAudioInputDeviceName;  //éº¦å…‹é£è®¾å¤‡åç§°
+    static QRect gLocalCameraWidgetRect;   //æœ¬åœ°æ‘„åƒå¤´ä½ç½®
+    static QString gLocalCameraDeviceName; //æœ¬åœ°æ‘„åƒå¤´è®¾å¤‡å
+    static bool gEnableVirtualAudioCapture; //æ˜¯å¦å¯ç”¨å£°å¡å½•åˆ¶
+    static QSize gVideoFileSize;  //è§†é¢‘æ–‡ä»¶åˆ†è¾¨ç‡
+    static int gVideoQuality;     //è§†é¢‘ç”»è´¨
+    static QString gVideoDirPath; //å­˜æ”¾è§†é¢‘è·¯å¾„
+    static int gCaptureAreaRate;  //é‡‡é›†åŒºåŸŸæ¯”ä¾‹
+    static int gPictureAreaRate;  //å¹¿å‘Šå›¾ç‰‡åŒºåŸŸæ¯”ä¾‹
 
     static MainWindow *gMainWindow;
-    static QRect gMainWindowRect; //Ö÷´°¿ÚµÄÎ»ÖÃ - ÓÃÓÚ±ê¼ÇÔÚ·ÇÈ«ÆÁÄ£Ê½ÏÂµÄµ¯´°´óĞ¡
-    static QRect gScreenRect;
+    static MediaManager *gMediaManager;
 
     static void MakeDir(QString dirName);
-    static void InitAllDataPath(); //³õÊ¼»¯ËùÓĞÊı¾İ±£´æµÄÂ·¾¶
+
+    static void setURL_ROOT(const QString &rootUrl = "");
+    static void InitAllDataPath(); //åˆå§‹åŒ–æ‰€æœ‰æ•°æ®ä¿å­˜çš„è·¯å¾„
+
+    static void SetStyle(QWidget *wdiget, const QString &styleName);
 
     static QString bufferToString(QByteArray sendbuf);
     static QByteArray StringToBuffer(QString);
     static QString getFileMd5(QString filePath,qint64 size=-1);
+    static QString getMd5(QString str);
+    static QString bufferToFile(uint8_t *buffer, const int &len, const QString &suffix);
 
-    static QString getMACAdress(); //»ñÈ¡macµØÖ· ÓÃÓÚĞÅÁîµÄcount
-    static QString getIpAdress();
+    ///é…ç½®æ–‡ä»¶
+    static void loadConfigInfoFromFile();
+    static void saveConfigInfoToFile();
 
-    ///Ğ´ÈÕÖ¾
-//    static QFile gLogFile;
+    ///å†™æ—¥å¿—
     static void WriteLog(QString str);
     static void InitLogFile();
     static QString getSizeInfo(qint64 size);
 
-    static QImage ImagetoGray( QImage image); //Éú³É»Ò¶ÈÍ¼
+    static QImage ImagetoGray( QImage image); //ç”Ÿæˆç°åº¦å›¾
+    static QString ImageToFile(const QImage &image);
+    static QString getBase64Str(const QImage &image);
+    static QString getBase64Str(QString filePath);
+    static QString getBase64Str(const QByteArray &arrayBuffer);
+    static QImage base64ToQImage(const QString &base64Str, const bool &isBmp = false);
+    static QString base64ToImageFile(const QString &base64Str, const bool &isBmp = false);
+    static QString bufferToFile(char *buffer, const int &len);
+    static QByteArray fileToBuffer(const QString &filePath);
 
-    static void mSleep(int mSecond);
+    static bool copyFile(const QString &srcFile, const QString & destFile);
 
-    static int64_t getTimeStamp_MilliSecond(); //»ñÈ¡Ê±¼ä´Á£¨ºÁÃë£©
+    ///æ‹·è´æ–‡ä»¶å¤¹
+    static bool copyDirectoryFiles(const QString &fromDir, const QString &toDir, bool coverFileIfExist);
 
-    ///É¾³ıÄ¿Â¼
+    ///åˆ é™¤ç›®å½•
     static bool removeDirectory(QString dirName);
 
-    ///ÖØÆôÈí¼ş
+    ///é‡å¯è½¯ä»¶
     static bool restartSelf();
+
+    ///ä¼‘çœ å‡½æ•°(æ¯«ç§’)
+    static void mSleep(int mSecond);
 
 };
 
